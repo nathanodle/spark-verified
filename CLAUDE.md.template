@@ -77,12 +77,17 @@ lenses, and wording are under "Sweeps" in `docs/verification-strategy.md`.
 - **A sweep is real or it is not a sweep.** Considering the lenses yourself in one
   reply is not one. Do not call it one, and do not claim completeness from it.
 - **Ask the user for input the way "Asking the human" says:** open questions, no menus,
-  no examples from the project's own field, no pressing. Never ask for "lenses". Give
-  the introduction before the first sweep in a project.
+  no examples from the project's own field, no pressing. Never ask for "lenses". Route
+  what they say, and never rewrite it into a lens. Give the introduction before the
+  first sweep in a project.
 
 ### Mark what you only believe
 State where a fact came from, in the sentence: `[source: ...]` or `[believed]`. Never
 give a remembered fact in the same voice as a checked one.
+
+A spike settles a believed fact by experiment. Ask before running one, and write its
+question first. Leave a record in `docs/spikes/` and throw the code away. Nothing from
+a spike's code enters the implementation. See "Facts" in `docs/spec-strategy.md`.
 
 ---
 
@@ -108,6 +113,7 @@ docs/
 │   ├── index.md
 │   ├── [feature].md              # Feature specs, with notes and numbered decisions
 │   └── model.rs                  # The subsystem's model; home of its formal items
+├── spikes/<date>-<name>.md       # Spike records
 └── sweeps/<date>-<name>/         # Sweep archives. Read merged.md, never passes/.
 model/                            # Crate that compiles every model.rs
 tools/check                       # Reference checker

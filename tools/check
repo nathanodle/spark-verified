@@ -24,6 +24,7 @@ FROM_LINE = re.compile(r'^\s*///\s*From:\s*(.*)$')
 DISP_LINE = re.compile(r'^\s*///\s*Disposition:\s*(.*)$')
 ENTRY_HEADING = re.compile(r'^#{1,6}\s+(E\d+)\b[:.\s]*(.*)$')
 DISMISSED = re.compile(r'Dismissed:\s*(.*)$')
+SPIKE_SOURCE = re.compile(r'\[source:\s*(spikes/[\w.-]+)')
 HARNESS = re.compile(r'\bfn\s+(check_(?:inv|prop)_[a-z0-9]+_\d{3})\b')
 SKIP_DIRS = {'target', 'node_modules'}
 EMPTY_CELLS = {'', '-', 'none', 'n/a'}
@@ -56,6 +57,7 @@ class State:
         self.parked = {}          # label -> (home, take_up, status, text)
         self.root = '.'
         self.sweep_records = []   # (directory, topic, swept?, rest of line, home)
+        self.spike_cites = []     # (record path under docs, home)
         self.believed = []
         self.model_dirs = set()
         self.harnesses = set()
@@ -162,6 +164,9 @@ def parse_markdown(st, path, role, docrel, shown):
             continue
         if role == 'spec' and '[believed]' in line:
             st.believed.append(home)
+        if role == 'spec':
+            for m in SPIKE_SOURCE.finditer(line):
+                st.spike_cites.append((m.group(1), home))
         note_dismissals(st, line, home)
         if is_claims:
             note_sweep_record(st, line, home, docrel)
@@ -342,6 +347,10 @@ def analyse(st):
             elif items[w].kind == 'claim' and \
                     (items[w].status or '').strip().lower().startswith('accepted'):
                 errors.append((home, 'dismissal of %s cites an accepted claim: %s' % (key, w)))
+
+    for record, home in st.spike_cites:
+        if not os.path.isfile(os.path.join(st.root, 'docs', record + '.md')):
+            errors.append((home, 'source cites a spike record that does not exist: %s' % record))
 
     ruled = set()
     for where, topic, swept, rest, home in st.sweep_records:

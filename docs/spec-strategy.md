@@ -92,6 +92,8 @@ docs/
 │   ├── templates/                # Templates for bootstrapping
 │   └── archive/                  # Historical specs (completed build orders, etc.)
 │
+├── spikes/                       # Spike records
+│
 ├── <subsystem>/                  # One per major subsystem
 │   └── spec/
 │       ├── index.md              # Subsystem overview + Related Platform Specs table
@@ -182,8 +184,28 @@ each one that matters came from, in the sentence that states it:
 - `[believed]` - from memory, the user's or the agent's, not yet checked
 
 A spec built on a believed fact is built on a guess. A **spike** is how a believed fact
-becomes a sourced one: a throwaway experiment whose only output is a fact for a spec.
-It is not implementation, it is not gated, and it is deleted afterward.
+becomes a sourced one: a small experiment run to answer one question. Its code is
+thrown away. Its record is kept.
+
+Ask the user before running a spike, and state its question first. A spike is not
+implementation and is not gated.
+
+The record is one file, `docs/spikes/<date>-<name>.md`, with four parts:
+
+| Part | Holds |
+|------|-------|
+| Question | One sentence, written before the spike starts. It names the believed facts it will settle. |
+| Method | What was done, and with what versions and hardware. Enough to repeat it. |
+| Observed | The raw result, verbatim: output, measurements, the configuration that worked. |
+| Answer | The fact, in a sentence or two. |
+
+- **Keep Observed and Answer apart.** A conclusion is never written in the voice of an
+  observation.
+- **Everything the answer rests on is inside the record.** Do not point at a log kept
+  somewhere else.
+- **A fact settled by a spike cites the record:** `[source: spikes/<date>-<name>]`.
+- **Nothing from a spike's code enters the implementation.** Anything worth keeping,
+  such as a configuration that worked, is kept as text in the record.
 
 ---
 

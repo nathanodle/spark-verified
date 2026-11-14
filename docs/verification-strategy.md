@@ -70,7 +70,8 @@ them into the claims the project will stand behind.
 One document, `docs/spec/system-description.md`, the single input every pass of the
 claims sweep reads. It says what the system is, then gives the ten lists the standard
 lenses walk. It is derived from the stage-one specs: rewrite it before a sweep rather
-than maintaining it between sweeps.
+than maintaining it between sweeps. It is derived after the human has been asked, so
+that what they said is in it.
 
 ### Sweeps
 
@@ -122,17 +123,19 @@ is not a sweep, is not called one, and supports no claim of completeness.
 
 **Procedure**
 
-1. **Freeze the input.** Copy what the sweep reads into the sweep directory: the
-   system description for the claims sweep, the feature's specs for a general one.
-2. **Gather lenses.**
+1. **Ask the human.** See "Asking the human" below. This comes first, before anything
+   is frozen and before any result exists to steer them.
+2. **Settle and freeze the input.** For the claims sweep, write any facts from the
+   human's answers into the specs they concern, then derive the system description.
+   For a general sweep the input is the feature's specs. Copy what the sweep reads
+   into the sweep directory.
+3. **Gather lenses.**
    - The standard set for this kind of sweep, below.
-   - The human's input. See "Asking the human" below. Ask before showing any results,
-     ask again after the merge, and take more whenever it is offered.
-   - Category lenses, for the claims sweep only. They are built now, after the human's
-     first answers. See "Category lenses" below.
+   - Category lenses, for the claims sweep only, including what the human said. See
+     "Category lenses" below.
    - Other lenses specific to the project.
    - Documents. Walking a standard section by section is a lens.
-3. **Run each lens as one pass, with one fresh agent per step.** A pass is one lens's
+4. **Run each lens as one pass, with one fresh agent per step.** A pass is one lens's
    whole walk. Each step of the walk goes to its own agent, with no conversation
    history. No agent is ever on its second step, so a long walk cannot thin out toward
    its end, and no step is shaped by the ones before it. Each agent works in a scratch
@@ -147,7 +150,7 @@ is not a sweep, is not called one, and supports no claim of completeness.
 
    For a general lens the walk does not exist until someone writes it. One agent per
    lens writes the walk first. Then one agent per step runs.
-4. **Merge pairwise.** Take the merged list so far and one pass. Give every entry in
+5. **Merge pairwise.** Take the merged list so far and one pass. Give every entry in
    the pass one verdict: same as a merged entry, refines one, or new. One pair per
    turn. Three rules:
    - Merging links, never deletes. A merged entry lists every source entry.
@@ -155,7 +158,11 @@ is not a sweep, is not called one, and supports no claim of completeness.
      distinct finding.
    - Every pass entry ends up as a source of exactly one merged entry. The check script
      enforces this.
-5. **Dispose.** The human rules on every merged entry. Nothing is left undecided.
+6. **Ask the human again,** showing the merged list. Anything new means running the
+   new cells: a new row against every lens, or a new column against every row. Give
+   the agent count and ask before running them. Take more input whenever it is
+   offered.
+7. **Dispose.** The human rules on every merged entry. Nothing is left undecided.
 
 The share of the human's results that the standard passes had already found is the
 best available signal of coverage. Overlap among the agent's own passes proves less.
@@ -198,7 +205,9 @@ possible to tell whether a given finding belongs to it.
 
 1. A fresh agent drafts the categories. It reads the frozen system description and the
    human's answers, verbatim, and nothing else. Categories are derived, not recalled:
-   from who can be harmed by this system, and what each stands to lose.
+   from who can be harmed by this system, and what each stands to lose. Harms the
+   human named go on the list in the human's words. The agent may add categories
+   beside them. It may not reword or merge them.
 2. The human edits the list. It is short, so this is a good use of their attention. A
    worry of theirs can become a category in their own words.
 3. The categories and the system description form a grid: every row of every list
@@ -217,6 +226,11 @@ categories.
 
 Before the sweep, give the human the agent count for each way and ask which they want.
 Either way, the results are assembled into one pass file per category.
+
+A remark from the human that runs as it stands (see "Asking the human") is one more
+column of the grid. It is put to every row, in the human's words: with this in mind,
+what could go wrong here? It gets its own pass file, which shows what the human's
+input found that the standard lenses did not.
 
 The approved categories are recorded in the sweep's `lenses.md`.
 
@@ -263,7 +277,7 @@ A general sweep adds:
 **Asking the human**
 
 The human's context is the one input the agent cannot produce. Do not ask for
-"lenses". Ask for raw material in their own terms, and convert it.
+"lenses". Ask for raw material in their own terms, and route it.
 
 - **No menus.** Ask open questions in plain text. Any options offered are the agent's
   own distribution handed back.
@@ -308,6 +322,20 @@ not here? Does anything on it remind you of something else?
 
 *General sweeps* ask one lighter question: Is there anything about this you suspect
 gets forgotten, or anything odd about how it is used?
+
+*What happens to their answers.* Route, never rewrite. An angle is worth having
+because of how it is phrased, so it travels verbatim. A fact is worth the same in any
+voice.
+
+| What they said | Where it goes | Wording |
+|----------------|---------------|---------|
+| It names a harm | The category list | Theirs |
+| It is a fact about the system or its surroundings | The spec it concerns. The system description picks it up from there. | The spec's own, with the specifics kept |
+| Anything else | It runs as it stands: one more column in the category grid. In a general sweep, one more lens, put to every part of the input. | Theirs |
+
+- When unsure, it runs as it stands.
+- One remark can take more than one route.
+- Show the human the routing before the sweep runs, and let them correct it.
 
 **Layout**
 
@@ -595,7 +623,8 @@ tools/check dismissed          # every dismissal, for review
 **Errors** (exit status 1): an ID or address with two homes; a `From` or dismissal that
 points at nothing; a claim, formal item, or contract with no `From`; a `Swept` line that
 points at no sweep; a `Not swept` line with no reason; a missing or malformed status
-or disposition; a closed parked item with no outcome; a trust assumption with no
+or disposition; a closed parked item with no outcome; a source that cites a spike record that does not
+exist; a trust assumption with no
 mitigation; a dismissal with no reason,
 with a reason that names nothing, or that cites an accepted claim; a sweep entry
 merged into more than one merged entry.
