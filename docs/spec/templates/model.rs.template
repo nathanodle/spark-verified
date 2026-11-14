@@ -4,6 +4,7 @@
 //! home of this subsystem's state, invariants, contracts, and formal items.
 //! See "Stage 3: Formalize" in docs/verification-strategy.md.
 //!
+//! Swept: state changes, {{sweeps/<date>-<name>}}
 //! Dismissed: {{path/to/spec#V0}}, because {{what made it unnecessary, by address or ID}}.
 
 /// {{What the state is, independent of implementation.}}
@@ -25,7 +26,9 @@ pub fn inv<const N: usize>(s: &State<N>) -> bool {
     inv_{{name}}(s)
 }
 
-/// Requires for `{{subsystem}}::{{operation}}`.
+/// Contract: {{subsystem}}::{{operation}}
+/// From: {{sweeps/<date>-<name>/merged#M0}}
+/// Requires.
 pub fn pre_{{operation}}<const N: usize>(s: &State<N>, a: &{{Args}}) -> bool {
     let _ = (s, a);
     todo!()

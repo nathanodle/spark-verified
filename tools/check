@@ -18,6 +18,8 @@ ID = r'(?:C-\d{3}|(?:INV|PROP|TA)-[A-Z0-9]+-\d{3})'
 ADDR = r'(?:[\w.-]+/)+[\w.-]+#[VDEM]\d+'
 REF = re.compile(r'(?<![\w/#.-])(' + ADDR + '|' + ID + r')(?![\w-])')
 FORMAL_LINE = re.compile(r'^\s*///\s*((?:INV|PROP|TA)-[A-Z0-9]+-\d{3}):\s*(.*)$')
+CONTRACT_LINE = re.compile(r'^\s*///\s*Contract:\s*([A-Za-z_][\w:]*)\s*$')
+SWEPT = re.compile(r'\b(Not swept|Swept):\s*([a-z][a-z ]*?)\s*(?:,\s*(.*))?$')
 FROM_LINE = re.compile(r'^\s*///\s*From:\s*(.*)$')
 DISP_LINE = re.compile(r'^\s*///\s*Disposition:\s*(.*)$')
 ENTRY_HEADING = re.compile(r'^#{1,6}\s+(E\d+)\b[:.\s]*(.*)$')
@@ -26,6 +28,7 @@ HARNESS = re.compile(r'\bfn\s+(check_(?:inv|prop)_[a-z0-9]+_\d{3})\b')
 SKIP_DIRS = {'target', 'node_modules'}
 EMPTY_CELLS = {'', '-', 'none', 'n/a'}
 FORMAL = ('inv', 'prop', 'ta')
+TRACED = ('claim', 'contract') + FORMAL     # must say what they are From
 
 
 class Item:
@@ -51,6 +54,8 @@ class State:
         self.dismissed = {}       # key -> (home, reason, references in the reason)
         self.claims_dirs = set()
         self.parked = {}          # label -> (home, take_up, status, text)
+        self.root = '.'
+        self.sweep_records = []   # (directory, topic, swept?, rest of line, home)
         self.believed = []
         self.model_dirs = set()
         self.harnesses = set()
@@ -118,6 +123,13 @@ def column(header, cells, name):
     return ''
 
 
+def note_sweep_record(st, line, home, docrel):
+    m = SWEPT.search(line)
+    if m:
+        st.sweep_records.append((os.path.dirname(docrel), m.group(2).strip(),
+                                 m.group(1) == 'Swept', (m.group(3) or '').strip(), home))
+
+
 def note_dismissals(st, line, home):
     m = DISMISSED.search(line)
     if not m:
@@ -151,6 +163,8 @@ def parse_markdown(st, path, role, docrel, shown):
         if role == 'spec' and '[believed]' in line:
             st.believed.append(home)
         note_dismissals(st, line, home)
+        if is_claims:
+            note_sweep_record(st, line, home, docrel)
         cells = split_row(line)
         if cells is None:
             header = None
@@ -209,13 +223,18 @@ def parse_model(st, path, docrel, shown):
             current = None
             continue
         note_dismissals(st, line, home)
+        note_sweep_record(st, line, home, docrel)
         if not line.lstrip().startswith('///'):
             current = None
             continue
         m = FORMAL_LINE.match(line)
+        c = CONTRACT_LINE.match(line)
         if m:
             key = m.group(1)
             current = st.add(Item(key, key.split('-')[0].lower(), home, m.group(2)))
+            current.in_model = True
+        elif c:
+            current = st.add(Item(c.group(1), 'contract', home))
             current.in_model = True
         elif current is not None:
             m = FROM_LINE.match(line)
@@ -241,6 +260,7 @@ def parse_code(st, path):
 
 def load(root):
     st = State()
+    st.root = root
     for path in walk(root):
         role, docrel = classify(path, root)
         shown = os.path.relpath(path, root).replace(os.sep, '/')
@@ -297,7 +317,7 @@ def analyse(st):
         for f in it.froms:
             if f not in items:
                 errors.append((it.home, '%s: From points at nothing: %s' % (it.key, f)))
-        if it.kind in ('claim',) + FORMAL and not it.froms:
+        if it.kind in TRACED and not it.froms:
             errors.append((it.home, '%s has no From' % it.key))
         if it.kind in FORMAL and it.in_model:
             problem = check_disposition(it)
@@ -322,6 +342,23 @@ def analyse(st):
             elif items[w].kind == 'claim' and \
                     (items[w].status or '').strip().lower().startswith('accepted'):
                 errors.append((home, 'dismissal of %s cites an accepted claim: %s' % (key, w)))
+
+    ruled = set()
+    for where, topic, swept, rest, home in st.sweep_records:
+        ruled.add((where, topic))
+        if swept:
+            target = rest.rstrip('.').strip()
+            if not target.startswith('sweeps/') or \
+                    not os.path.isdir(os.path.join(st.root, 'docs', target)):
+                errors.append((home, 'Swept line points at no sweep: %s' % (target or '?')))
+        elif not re.match(r'because\s+\S', rest):
+            errors.append((home, 'Not swept (%s) needs "because <reason>"' % topic))
+    for where in sorted(st.model_dirs):
+        if (where, 'state changes') not in ruled:
+            opened['Models with no state-change sweep'].append('docs/%s' % where)
+    for where in sorted(st.claims_dirs):
+        if (where, 'trust assumptions') not in ruled:
+            opened['No ruling on sweeping trust assumptions'].append('docs/%s/claims.md' % where)
 
     for label in sorted(st.parked, key=lambda p: int(p[1:])):
         home, take_up, status, text = st.parked[label]
@@ -351,9 +388,9 @@ def analyse(st):
     named = set()          # named by a claim or formal item
     by_formal = set()      # named by a formal item
     for it in items.values():
-        if it.kind in ('claim',) + FORMAL:
+        if it.kind in TRACED:
             named.update(it.froms)
-        if it.kind in FORMAL:
+        if it.kind in FORMAL + ('contract',):
             by_formal.update(it.froms)
 
     for it in sorted(items.values(), key=lambda x: x.key):
@@ -408,10 +445,10 @@ def cmd_check(st):
 def cmd_registry(st):
     print('| ID | Kind | Statement | From | Status / Disposition | Home | Evidence |')
     print('|----|------|-----------|------|----------------------|------|----------|')
-    order = {'claim': 0, 'ta': 1, 'inv': 2, 'prop': 3}
+    order = {'claim': 0, 'ta': 1, 'inv': 2, 'prop': 3, 'contract': 4}
     rows = [it for it in st.items.values() if it.kind in order]
     for it in sorted(rows, key=lambda x: (order[x.kind], x.key)):
-        if it.kind == 'claim':
+        if it.kind in ('claim', 'contract'):
             state, evidence = it.status or '', ''
         elif it.kind == 'ta':
             state = it.disposition or ('Trust, mitigated by ' + (it.mitigation or ''))

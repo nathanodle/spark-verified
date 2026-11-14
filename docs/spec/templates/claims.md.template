@@ -25,6 +25,8 @@ Those not about a model. A trust assumption about a model lives in that model's 
 |----|------------|------------|------|
 | TA-PLAT-001 | {{assumption}} | {{mitigation}} | {{decision or note it came from}} |
 
+{{Swept: trust assumptions, sweeps/<date>-<name>   OR   Not swept: trust assumptions, because <reason>}}
+
 ---
 
 ## Dismissed

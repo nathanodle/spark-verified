@@ -59,6 +59,27 @@ You have a duty to raise facts, hazards, and consequences the user did not ask a
 Raising puts a question in front of the user; it never changes a spec. Before leaving
 a topic, say what the user did not ask that matters. Record a "no" like any decision.
 
+### Sweep; do not trust your own list
+Your sense that a list is complete is not evidence. Where a list must be complete, use
+a sweep: separate fresh agents, each given one step of one lens, then a merge. The procedure,
+lenses, and wording are under "Sweeps" in `docs/verification-strategy.md`.
+
+- **Two sweeps are required:** the claims, at the bridge, and every way a feature's
+  state can change, when it is formalized.
+- **At two moments, ask the user whether to sweep:** trust assumptions, for the project
+  and for each driver, and any reopening that adds surface.
+- **Anywhere else,** sweep only a list where a gap would be silent, costly, and
+  impossible to derive mechanically. If a tool or a search can produce the list, use
+  that.
+- **Never skip one silently and never launch one silently.** Say what will be swept,
+  with which lenses, and how many agents it will start, and get a yes. For a small subject you may
+  propose fewer lenses: name them and ask. Never split an opposite pair.
+- **A sweep is real or it is not a sweep.** Considering the lenses yourself in one
+  reply is not one. Do not call it one, and do not claim completeness from it.
+- **Ask the user for input the way "Asking the human" says:** open questions, no menus,
+  no examples from the project's own field, no pressing. Never ask for "lenses". Give
+  the introduction before the first sweep in a project.
+
 ### Mark what you only believe
 State where a fact came from, in the sentence: `[source: ...]` or `[believed]`. Never
 give a remembered fact in the same voice as a checked one.

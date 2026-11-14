@@ -11,8 +11,6 @@ Stage 4  Implement and prove  Code and harnesses.
          Reentry              Rules for reopening discussion once formal things exist.
 ```
 
-Parts marked **PENDING** are not designed yet.
-
 ---
 
 ## The Idea
@@ -76,33 +74,79 @@ than maintaining it between sweeps.
 
 ### Sweeps
 
-A sweep is the tool for any list that must be complete. It is required once, to build
-the claims. Use it anywhere else a list must have no gaps, such as every way a
-feature's state can change, or every assumption a driver makes.
+A sweep is the tool for any list that must be complete.
 
 One author's passes all draw from the same distribution, so repeating them finds the
 same things. A sweep counters that three ways: a **lens** narrows a pass so it goes
-deep on one thing, **fresh agents** keep passes from anchoring on each other, and
+deep on one thing, **fresh agents** keep one piece of work from anchoring on another, and
 **outside material** - the human's context, or a standards document - moves a pass
 somewhere the author would not have gone alone.
 
+**When to sweep**
+
+The agent's sense that a list is complete is not evidence, so the trigger is never the
+agent's judgment of its own list. Sweeps happen at fixed moments:
+
+| Moment | List | Sweep |
+|--------|------|-------|
+| The bridge | The claims | Required |
+| Formalizing a feature | Every way its state can change | Required |
+| The bridge, and formalizing a driver | Trust assumptions | Ask the human |
+| A reopening that adds surface | What it touches | Ask the human |
+
+Anywhere else, a list deserves a sweep only when all three hold:
+
+1. **A gap is silent.** No compiler, proof, or test would reveal it.
+2. **A gap is costly.** Something formal rests on the list being complete.
+3. **The list is open.** It cannot be derived mechanically. If a search or a tool can
+   produce it, use that instead.
+
+Never skip a sweep silently, and never launch one silently. Before running, say what
+is being swept, with which lenses, and how many agents it will start, and get a yes. For a small
+subject the agent may propose fewer lenses: it names each one and asks. An opposite
+pair is never split.
+
+Nothing is swept, or left unswept, by accident. The record sits where the list lives,
+in the model file or in `claims.md`:
+
+```rust
+//! Swept: state changes, sweeps/2026-12-net-changes
+//! Not swept: trust assumptions, because the driver touches one register.
+```
+
+A required sweep has one way out: a feature that holds no state has no state changes
+to sweep, and says so in a `Not swept` line.
+
+A sweep means separate fresh agents and a merge. Considering the lenses in one reply
+is not a sweep, is not called one, and supports no claim of completeness.
+
 **Procedure**
 
-1. **Freeze the input.** Copy what the sweep reads into the sweep directory.
+1. **Freeze the input.** Copy what the sweep reads into the sweep directory: the
+   system description for the claims sweep, the feature's specs for a general one.
 2. **Gather lenses.**
-   - The standard set, below.
-   - Lenses specific to the project.
-   - Lenses from the human. Ask before showing any results, ask again after the merge,
-     and take more whenever they are offered. Raw input is welcome: a worry, an
-     anecdote, a device they own. Each becomes its own lens. Offer back what the human
-     has parked; those items are this kind of material.
+   - The standard set for this kind of sweep, below.
+   - The human's input. See "Asking the human" below. Ask before showing any results,
+     ask again after the merge, and take more whenever it is offered.
+   - Category lenses, for the claims sweep only. They are built now, after the human's
+     first answers. See "Category lenses" below.
+   - Other lenses specific to the project.
    - Documents. Walking a standard section by section is a lens.
-3. **Run one pass per lens, each in a fresh agent** with no conversation history. The
-   pass runs in a scratch directory holding only the frozen input and its one lens, so
-   there is nothing else to find. Its output is a file of numbered entries. It is
-   exhaustive: no prioritizing, no summarizing, no cap. Where the harness can restrict
-   an agent's tools, denying search is optional further hardening. Each pass is also
-   given the rules for every pass, below.
+3. **Run each lens as one pass, with one fresh agent per step.** A pass is one lens's
+   whole walk. Each step of the walk goes to its own agent, with no conversation
+   history. No agent is ever on its second step, so a long walk cannot thin out toward
+   its end, and no step is shaped by the ones before it. Each agent works in a scratch
+   directory holding only the frozen input, its lens, its one step, and the rules for
+   every pass, so there is nothing else to find. It is exhaustive within its step: no
+   prioritizing, no summarizing, no cap. Where the harness can restrict an agent's
+   tools, denying search is optional further hardening.
+
+   The agents' outputs for one lens are assembled, mechanically and in walk order,
+   into that lens's pass file. Entry numbers are assigned then. A step that found
+   nothing keeps its "Nothing, because" line in the file.
+
+   For a general lens the walk does not exist until someone writes it. One agent per
+   lens writes the walk first. Then one agent per step runs.
 4. **Merge pairwise.** Take the merged list so far and one pass. Give every entry in
    the pass one verdict: same as a merged entry, refines one, or new. One pair per
    turn. Three rules:
@@ -113,18 +157,17 @@ somewhere the author would not have gone alone.
      enforces this.
 5. **Dispose.** The human rules on every merged entry. Nothing is left undecided.
 
-The share of the human's lens results that the standard passes had already found is the
+The share of the human's results that the standard passes had already found is the
 best available signal of coverage. Overlap among the agent's own passes proves less.
 
 **Lenses**
 
 A lens has three parts: where the pass stands, the list it walks, and the question it
-asks at every step. A standard lens names its list by kind, and the system description
-supplies the list. Two lenses that walk the same list are twins; each lens below walks
-a different one.
+asks at every step. Two lenses that walk the same list with the same question are
+twins. Both standard sets are untried; expect them to change after the first sweeps.
 
-This is the standard set for the claims sweep. It is untried; expect it to change
-after the first sweeps. Other sweeps choose their own lenses.
+*Claims lenses.* Each names its list by kind, and the system description supplies the
+list.
 
 | Lens | Stands | Walks | Asks at each step |
 |------|--------|-------|-------------------|
@@ -143,26 +186,137 @@ Some overlap is kept on purpose. Boundaries, Exclusions, and Permissions meet at
 edge of the system; State and Agreements meet at stored data. Watch the overlap at the
 merge.
 
-A walk too long for one pass is split across several passes. **PENDING: at what
-length.**
+*Category lenses.* For the claims sweep only, and built at sweep time. A standard
+claims lens asks an open question at a part of the system: what could go wrong here? A
+category lens asks a pointed one: could this part contribute to this particular harm?
+The harm is fixed in advance and every part is tested against it. The two kinds of
+question cross-check each other.
+
+A **risk category** is a kind of harm, stated from the side of whoever suffers it. It
+is not a single risk, and not a kind of cause. It must have an edge: it has to be
+possible to tell whether a given finding belongs to it.
+
+1. A fresh agent drafts the categories. It reads the frozen system description and the
+   human's answers, verbatim, and nothing else. Categories are derived, not recalled:
+   from who can be harmed by this system, and what each stands to lose.
+2. The human edits the list. It is short, so this is a good use of their attention. A
+   worry of theirs can become a category in their own words.
+3. The categories and the system description form a grid: every row of every list
+   against every category. Each cell asks the same question: could this row contribute
+   to this harm, and how? There are two ways to staff the grid.
+
+| Way | Each agent gets | Agents |
+|-----|-----------------|--------|
+| By row (default) | One row and every category. It walks the categories. | One per row |
+| By cell | One row and one category | One per row, per category |
+
+By row costs one agent per row whatever the number of categories. The order of the
+categories is rotated from agent to agent, so that no category is always last. By cell
+gives every cell an agent to itself, and costs as many times more as there are
+categories.
+
+Before the sweep, give the human the agent count for each way and ask which they want.
+Either way, the results are assembled into one pass file per category.
+
+The approved categories are recorded in the sweep's `lenses.md`.
+
+*General lenses.* For any other list. Each is a direction to count from. It does not
+know what is being listed; the sweep states that once, as its target. The pass builds
+its walk from the input, and asks at each step which members arise there.
+
+| Lens | Walks | Asks at each step |
+|------|-------|-------------------|
+| Said | Each part of the input, in its own order | Which members does this state outright? |
+| Unsaid | Each statement of the input | What does this take for granted, and is that a member? |
+| Forward | Each thing that can act or happen | Which members does it produce? |
+| Backward | Each thing that can be affected or end up different | Which members could have led here? |
+| Time | Each moment, from before the start to after the end | Which members exist only now? |
+| Outside | Each point where the subject meets its surroundings | Which members come from the other side? |
+| Failure | Each thing that can fail, be absent, or come late | Which members arise only when it does? |
+| Edges | Each clause of the membership test, relaxed one at a time | What meets every clause but this one, and should it count? |
+
+Said and Unsaid are an opposite pair, and so are Forward and Backward. Opposite lenses
+reach the same set from two ends and cross-check each other: a member found from one
+end only is either a real find or a gap in the other walk.
 
 **Rules for every pass**
 
-1. State each finding as "must never" or "must always". Never as a fix, and never
-   ranked.
-2. "Nothing, because ..." is a full answer for a step. No step owes a finding.
-3. Where the description already settles a step, cite it and move on. Do not restate
+1. Never give a fix, and never rank.
+2. "Nothing, because ..." is a full answer for a step. No step owes a finding. An
+   agent whose whole job is one step will feel that it owes one. It does not.
+3. If the list being walked looks incomplete, say so. That is a finding.
+
+The claims sweep adds:
+
+4. State each finding as "must never" or "must always".
+5. Where the description already settles a step, cite it and move on. Do not restate
    the design as a finding.
-4. If the list being walked looks incomplete, say so. That is a finding.
+
+A general sweep adds:
+
+4. The sweep states its target once: what counts as a member, and at what grain.
+   Every pass uses it unchanged.
+5. The walk is written by its own agent before any step runs.
+6. No pass sees an existing draft of the list.
+7. Entries are members, never kinds of member.
+
+**Asking the human**
+
+The human's context is the one input the agent cannot produce. Do not ask for
+"lenses". Ask for raw material in their own terms, and convert it.
+
+- **No menus.** Ask open questions in plain text. Any options offered are the agent's
+  own distribution handed back.
+- **No examples from the project's own field.** They anchor. Show the form of a useful
+  answer with an example from an unrelated field.
+- **No pressing.** "Nothing comes to mind" is a full answer. Record that the ask was
+  made.
+- Their words go into `lenses.md` verbatim.
+
+*The first sweep in a project* (no sweep directory exists yet) starts with an
+introduction in plain words: what will happen, why it is split up, why their input
+matters, and what it will cost them. For example:
+
+> I want to run a check called a sweep. I will start many separate helpers. Each one
+> looks at one small part of the system from a single angle and lists everything that
+> could go wrong there. Then I combine the lists and you rule on each item.
+>
+> One reviewer misses the same things every time, which is why I split it up. But the
+> helpers all think like me, and you do not. What you know about your own situation is
+> the one input I cannot produce. Rough, half-formed answers are the most useful kind.
+>
+> This will start a few hundred helpers, each with one small job, and leave you a list
+> to rule on, which may be long. I am asking you first, before showing you anything,
+> so my results do not steer you.
+
+Give the real agent count in place of the rough one.
+
+*The questions,* asked before any results are shown:
+
+1. What is unusual about where and how this will be used, and who or what will be
+   around it?
+2. Which outcome would bother you most?
+3. Which part do you trust least, including anything you think I got wrong?
+
+Then show the form: "For a bridge, a useful answer might be: the river floods every
+spring." Offer back anything they have parked.
+
+*After the merge,* show the merged list and ask: What did you expect to see that is
+not here? Does anything on it remind you of something else?
+
+*Later sweeps* skip the introduction: one line of reminder, then the questions.
+
+*General sweeps* ask one lighter question: Is there anything about this you suspect
+gets forgotten, or anything odd about how it is used?
 
 **Layout**
 
 ```
 docs/sweeps/<date>-<name>/
 ├── input.md              # Frozen copy of what the sweep read
-├── lenses.md             # Lenses used, including the human's own words
+├── lenses.md             # Target or risk categories, lenses used, the human's own words
 ├── passes/
-│   └── NN-<lens>.md      # One per pass. Entries are headings: "### E12: title"
+│   └── NN-<lens>.md      # One per lens, assembled from its agents. Entries: "### E12: title"
 └── merged.md             # Table: | # | Entry | Sources |   rows M1, M2, ...
 ```
 
@@ -275,8 +429,16 @@ unique. Each gets a requires and an ensures in the model, either as `pre_`/`post
 predicates or as a pure reference function the implementation must agree with.
 
 Every way the state can change needs a contract: initialization, timeouts, error
-paths, updates arriving from another owner. One unlisted change breaks the induction.
-If that list must be complete and is not obviously so, sweep it.
+paths, updates arriving from another owner. One unlisted change breaks the induction,
+and nothing would reveal the gap. So this list is swept for every feature, with the
+general lenses and the target "every way this feature's state can change". Each merged
+entry becomes a contract or is dismissed. A contract names the entries it came from:
+
+```rust
+/// Contract: net::flow_insert
+/// From: sweeps/2026-12-net-changes/merged#M3
+pub fn pre_flow_insert<const N: usize>(s: &State<N>, a: &InsertArgs) -> bool { ... }
+```
 
 ### Accounting for Notes
 
@@ -341,7 +503,8 @@ the thing reopened.
   Keep it rare, and handle it as an event:
   1. Mark the item `REOPENED` at its home.
   2. Run `tools/check rests-on <item>` and read what depends on it before discussing.
-  3. Decide.
+  3. Decide. If the change adds surface, such as a new boundary, party, or piece of
+     state, ask the human whether to sweep again.
   4. Update everything downstream in the same sitting.
   5. Remove the mark. `tools/check` must come back clean before the reentry is closed.
 
@@ -391,17 +554,20 @@ write those again in a table.
 1. The claims sweep is merged and every merged entry is disposed of
 2. Every note and impact cell in the platform specs is accounted for
 3. The human has approved `claims.md`, including its dismissals
-4. The feature's specs are ✅ Complete
-5. No parked item due at the claims sweep or at this feature's formalization is still
+4. The human has ruled on sweeping the project's trust assumptions
+5. The feature's specs are ✅ Complete
+6. No parked item due at the claims sweep or at this feature's formalization is still
    parked
 
 **Start implementing a feature.**
 1. Its model compiles
-2. Every note and impact cell in its specs is accounted for
-3. Every formal item has a `From` and a disposition
-4. `tools/check` reports no errors and nothing open for this feature except missing
+2. Its state changes are swept, and every merged entry is a contract or dismissed
+3. For a driver, the human has ruled on sweeping its trust assumptions
+4. Every note and impact cell in its specs is accounted for
+5. Every formal item has a `From` and a disposition
+6. `tools/check` reports no errors and nothing open for this feature except missing
    harnesses
-5. The human has approved the model, including its dismissals
+7. The human has approved the model, including its dismissals
 
 **A feature is done.**
 1. Every Verify item has a passing harness at its bound
@@ -427,13 +593,15 @@ tools/check dismissed          # every dismissal, for review
 ```
 
 **Errors** (exit status 1): an ID or address with two homes; a `From` or dismissal that
-points at nothing; a claim or formal item with no `From`; a missing or malformed status
+points at nothing; a claim, formal item, or contract with no `From`; a `Swept` line that
+points at no sweep; a `Not swept` line with no reason; a missing or malformed status
 or disposition; a closed parked item with no outcome; a trust assumption with no
 mitigation; a dismissal with no reason,
 with a reason that names nothing, or that cites an accepted claim; a sweep entry
 merged into more than one merged entry.
 
-**Open** (must be empty at the relevant gate): parked items; sweep entries not yet merged; merged
+**Open** (must be empty at the relevant gate): parked items; a model with no
+state-change sweep; no ruling on sweeping the project's trust assumptions; sweep entries not yet merged; merged
 entries not yet disposed of; notes of kind Open; notes and impact cells not accounted
 for, in any directory that has a model or `claims.md`; accepted claims nothing serves;
 `[believed]` facts; anything resting on a `REOPENED` item; Verify items with no
