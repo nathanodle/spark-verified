@@ -1,0 +1,96 @@
+# {{PROJECT_NAME}} System Description
+
+The single input every pass of the claims sweep reads: what the system is, then the
+ten lists the standard lenses walk. See "The Bridge" in `docs/verification-strategy.md`.
+
+It is derived from the stage-one specs. Rewrite it before a sweep rather than
+maintaining it between sweeps. A frozen copy goes into each sweep directory.
+
+---
+
+## What It Is
+
+{{What the system is and does. Enough that a reader with nothing else can follow the
+lists below.}}
+
+---
+
+## Boundaries
+
+Every point where anything enters or leaves the system.
+
+| Boundary | What crosses it, in each direction |
+|----------|------------------------------------|
+| {{boundary}} | {{what crosses}} |
+
+## Journeys
+
+Every path a unit of work takes through the system, step by step.
+
+### {{Journey}}
+
+1. {{step}}
+
+## State
+
+Every stored thing.
+
+| State | What it holds |
+|-------|---------------|
+| {{state}} | {{contents}} |
+
+## Limits
+
+Every size, count, and range.
+
+| Limit | Value | What it bounds |
+|-------|-------|----------------|
+| {{limit}} | {{value}} | {{what}} |
+
+## Moments
+
+Every distinct point in the system's life.
+
+| Moment | What is different then |
+|--------|------------------------|
+| {{moment}} | {{difference}} |
+
+## Separations
+
+Every pair of things meant to stay apart.
+
+| Kept apart | Why |
+|------------|-----|
+| {{A and B}} | {{why}} |
+
+## Agreements
+
+Every pair of things meant to say the same.
+
+| Must agree | How they are kept in step |
+|------------|---------------------------|
+| {{A and B}} | {{how}} |
+
+## Reliances
+
+Everything depended on but not controlled.
+
+| Relies on | For what |
+|-----------|----------|
+| {{dependency}} | {{what for}} |
+
+## Exclusions
+
+Everything the system does not do.
+
+| Does not | Why |
+|----------|-----|
+| {{exclusion}} | {{why}} |
+
+## Permissions
+
+Every party, and what each is allowed to do.
+
+| Party | Allowed to |
+|-------|------------|
+| {{party}} | {{actions}} |

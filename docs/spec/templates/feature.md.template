@@ -1,0 +1,66 @@
+# {{PROJECT_NAME}} {{Feature Name}} Specification
+
+{{One-line description of what this feature does.}}
+
+**Status:** 🔲 Pending
+
+---
+
+## Related Specs
+
+| Spec | Relevance |
+|------|-----------|
+| [Stack](../../spec/stack.md) | {{what applies}} |
+| [Hardware](../../spec/hardware.md) | {{what this feature touches}} |
+
+---
+
+## Overview
+
+{{What it does and why it exists.}}
+
+---
+
+## Requirements
+
+- {{Requirement}}
+
+---
+
+## Behavior
+
+{{In prose: the state it holds, who owns that state, the operations it offers, and
+what each does.}}
+
+---
+
+## Error Handling
+
+| Error Case | What Happens |
+|------------|--------------|
+| {{case}} | {{result}} |
+
+---
+
+## Verification Notes
+
+{{Delete if the project will not be verified. Kinds: Must never, Relies on, Must agree,
+Shaped for proof, Hard to prove, Open.}}
+
+| # | Kind | Note |
+|---|------|------|
+| V1 | {{kind}} | {{note}} |
+
+---
+
+## Decisions
+
+| # | Decision | Alternatives Considered | Why This Choice | Verification Impact |
+|---|----------|------------------------|-----------------|---------------------|
+| D1 | {{decision}} | {{what else was on the table}} | {{reasoning}} | {{impact, or see V-number}} |
+
+---
+
+## Open Questions
+
+- [ ] {{Question}}

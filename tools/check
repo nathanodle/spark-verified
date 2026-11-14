@@ -1,0 +1,475 @@
+#!/usr/bin/env python3
+"""Reference checker for SPARK (Verified).
+
+The rules it enforces are defined in docs/verification-strategy.md, under
+"References" and "The Check Script". It only reads; it never writes.
+
+    tools/check                    errors and open items
+    tools/check registry           every claim and formal item, generated
+    tools/check rests-on <item>    everything that depends on an item
+    tools/check dismissed          every dismissal, for review
+"""
+import os
+import re
+import sys
+from collections import defaultdict, deque
+
+ID = r'(?:C-\d{3}|(?:INV|PROP|TA)-[A-Z0-9]+-\d{3})'
+ADDR = r'(?:[\w.-]+/)+[\w.-]+#[VDEM]\d+'
+REF = re.compile(r'(?<![\w/#.-])(' + ADDR + '|' + ID + r')(?![\w-])')
+FORMAL_LINE = re.compile(r'^\s*///\s*((?:INV|PROP|TA)-[A-Z0-9]+-\d{3}):\s*(.*)$')
+FROM_LINE = re.compile(r'^\s*///\s*From:\s*(.*)$')
+DISP_LINE = re.compile(r'^\s*///\s*Disposition:\s*(.*)$')
+ENTRY_HEADING = re.compile(r'^#{1,6}\s+(E\d+)\b[:.\s]*(.*)$')
+DISMISSED = re.compile(r'Dismissed:\s*(.*)$')
+HARNESS = re.compile(r'\bfn\s+(check_(?:inv|prop)_[a-z0-9]+_\d{3})\b')
+SKIP_DIRS = {'target', 'node_modules'}
+EMPTY_CELLS = {'', '-', 'none', 'n/a'}
+FORMAL = ('inv', 'prop', 'ta')
+
+
+class Item:
+    def __init__(self, key, kind, home, text=''):
+        self.key = key
+        self.kind = kind
+        self.home = home
+        self.text = text
+        self.froms = []
+        self.disposition = None
+        self.status = None
+        self.impact = ''
+        self.note_kind = ''
+        self.mitigation = None
+        self.in_model = False
+        self.reopened = False
+
+
+class State:
+    def __init__(self):
+        self.items = {}
+        self.errors = []
+        self.dismissed = {}       # key -> (home, reason, references in the reason)
+        self.claims_dirs = set()
+        self.parked = {}          # label -> (home, take_up, status, text)
+        self.believed = []
+        self.model_dirs = set()
+        self.harnesses = set()
+        self.ta_citations = defaultdict(int)
+
+    def add(self, item):
+        other = self.items.get(item.key)
+        if other:
+            self.errors.append((item.home, '%s has two homes; the other is %s'
+                                % (item.key, other.home)))
+            return other
+        self.items[item.key] = item
+        return item
+
+
+def walk(root):
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(d for d in dirnames
+                             if d not in SKIP_DIRS and not d.startswith('.'))
+        for name in sorted(filenames):
+            yield os.path.join(dirpath, name)
+
+
+def classify(path, root):
+    """Return (role, doc_address_stem) for a file, or (None, None) to skip it."""
+    rel = os.path.relpath(path, root).replace(os.sep, '/')
+    parts = rel.split('/')
+    stem, ext = os.path.splitext(rel)
+    if parts[0] != 'docs':
+        return ('code', None) if ext == '.rs' else (None, None)
+    sub = parts[1:]
+    if not sub or 'templates' in sub or 'archive' in sub or sub[0] == 'examples':
+        return None, None
+    docrel = stem[len('docs/'):]
+    if sub[0] == 'sweeps':
+        return ('sweep', docrel) if ext == '.md' else (None, None)
+    if 'spec' in sub[:-1]:
+        if ext == '.md':
+            return 'spec', docrel
+        if ext == '.rs':
+            return 'model', docrel
+    return None, None
+
+
+def split_row(line):
+    s = line.strip()
+    if not s.startswith('|'):
+        return None
+    return [c.strip() for c in s.strip('|').split('|')]
+
+
+def is_separator(cells):
+    return bool(cells) and all(re.fullmatch(r':?-{3,}:?', c) for c in cells)
+
+
+def clean(cell):
+    return cell.strip().strip('`*').strip()
+
+
+def column(header, cells, name):
+    if header:
+        for i, h in enumerate(header):
+            if name in h and i < len(cells):
+                return cells[i]
+    return ''
+
+
+def note_dismissals(st, line, home):
+    m = DISMISSED.search(line)
+    if not m:
+        return
+    rest = m.group(1)
+    before, sep, reason = rest.partition('because')
+    refs = REF.findall(before)
+    if not refs:
+        return
+    reason = reason.strip()
+    if not sep or not reason.strip(' .'):
+        st.errors.append((home, 'dismissal with no reason: %s' % ', '.join(refs)))
+    for r in refs:
+        st.dismissed[r] = (home, reason, REF.findall(reason))
+
+
+def parse_markdown(st, path, role, docrel, shown):
+    with open(path, encoding='utf-8') as f:
+        lines = f.read().splitlines()
+    is_pass = role == 'sweep' and '/passes/' in docrel
+    is_merged = role == 'sweep' and docrel.endswith('/merged')
+    is_claims = role == 'spec' and os.path.basename(path) == 'claims.md'
+    is_parked = role == 'spec' and os.path.basename(path) == 'parked.md'
+    if is_claims:
+        st.claims_dirs.add(os.path.dirname(docrel))
+    header = None
+    for i, line in enumerate(lines):
+        home = '%s:%d' % (shown, i + 1)
+        if '{{' in line:
+            continue
+        if role == 'spec' and '[believed]' in line:
+            st.believed.append(home)
+        note_dismissals(st, line, home)
+        cells = split_row(line)
+        if cells is None:
+            header = None
+            if is_pass:
+                m = ENTRY_HEADING.match(line)
+                if m:
+                    st.add(Item('%s#%s' % (docrel, m.group(1)), 'entry', home, m.group(2)))
+            continue
+        if is_separator(cells):
+            continue
+        nxt = split_row(lines[i + 1]) if i + 1 < len(lines) else None
+        if nxt and is_separator(nxt):
+            header = [c.lower() for c in cells]
+            continue
+        first = clean(cells[0])
+        item = None
+        if is_parked and re.fullmatch(r'P\d+', first):
+            if first in st.parked:
+                st.errors.append((home, '%s has two homes; the other is %s'
+                                  % (first, st.parked[first][0])))
+            st.parked[first] = (home, column(header, cells, 'take up'),
+                                column(header, cells, 'status'), column(header, cells, 'item'))
+            continue
+        if role == 'spec' and re.fullmatch(r'V\d+', first):
+            item = st.add(Item('%s#%s' % (docrel, first), 'note', home,
+                               column(header, cells, 'note')))
+            item.note_kind = column(header, cells, 'kind')
+        elif role == 'spec' and re.fullmatch(r'D\d+', first):
+            item = st.add(Item('%s#%s' % (docrel, first), 'decision', home,
+                               column(header, cells, 'decision')))
+            item.impact = column(header, cells, 'verification impact')
+        elif is_merged and re.fullmatch(r'M\d+', first):
+            item = st.add(Item('%s#%s' % (docrel, first), 'merged', home,
+                               column(header, cells, 'entry')))
+            item.froms = REF.findall(column(header, cells, 'sources'))
+        elif is_claims and re.fullmatch(r'C-\d{3}', first):
+            item = st.add(Item(first, 'claim', home, column(header, cells, 'claim')))
+            item.status = column(header, cells, 'status').replace('REOPENED', '').strip()
+            item.froms = REF.findall(column(header, cells, 'from'))
+        elif is_claims and re.fullmatch(r'TA-[A-Z0-9]+-\d{3}', first):
+            item = st.add(Item(first, 'ta', home, column(header, cells, 'assumption')))
+            item.mitigation = column(header, cells, 'mitigation')
+            item.froms = REF.findall(column(header, cells, 'from'))
+        if item is not None and 'REOPENED' in line:
+            item.reopened = True
+
+
+def parse_model(st, path, docrel, shown):
+    st.model_dirs.add(os.path.dirname(docrel))
+    with open(path, encoding='utf-8') as f:
+        lines = f.read().splitlines()
+    current = None
+    for i, line in enumerate(lines):
+        home = '%s:%d' % (shown, i + 1)
+        if '{{' in line:
+            current = None
+            continue
+        note_dismissals(st, line, home)
+        if not line.lstrip().startswith('///'):
+            current = None
+            continue
+        m = FORMAL_LINE.match(line)
+        if m:
+            key = m.group(1)
+            current = st.add(Item(key, key.split('-')[0].lower(), home, m.group(2)))
+            current.in_model = True
+        elif current is not None:
+            m = FROM_LINE.match(line)
+            if m:
+                current.froms.extend(REF.findall(m.group(1)))
+            m = DISP_LINE.match(line)
+            if m:
+                current.disposition = m.group(1).strip()
+        if current is not None and 'REOPENED' in line:
+            current.reopened = True
+
+
+def parse_code(st, path):
+    try:
+        with open(path, encoding='utf-8') as f:
+            text = f.read()
+    except (OSError, UnicodeDecodeError):
+        return
+    st.harnesses.update(HARNESS.findall(text))
+    for ta in set(re.findall(r'TA-[A-Z0-9]+-\d{3}', text)):
+        st.ta_citations[ta] += 1
+
+
+def load(root):
+    st = State()
+    for path in walk(root):
+        role, docrel = classify(path, root)
+        shown = os.path.relpath(path, root).replace(os.sep, '/')
+        if role in ('spec', 'sweep'):
+            parse_markdown(st, path, role, docrel, shown)
+        elif role == 'model':
+            parse_model(st, path, docrel, shown)
+        elif role == 'code':
+            parse_code(st, path)
+    return st
+
+
+def check_disposition(item):
+    d = item.disposition
+    if d is None:
+        return 'no disposition'
+    low = d.lower()
+    if item.kind == 'ta' and not low.startswith('trust'):
+        return 'a trust assumption must have disposition Trust'
+    if low.startswith('verify'):
+        return None if re.search(r'\bN\s*=\s*\d+', d) else 'Verify needs a bound, N=<n>'
+    if low.startswith('test'):
+        return None if re.search(r'because\s+\S', low) else 'Test needs "because <reason>"'
+    if low.startswith('trust'):
+        return None if re.search(r'mitigated by\s+\S', low) else 'Trust needs "mitigated by <how>"'
+    return 'disposition must start with Verify, Test, or Trust'
+
+
+def harness_name(key):
+    return 'check_' + key.lower().replace('-', '_')
+
+
+def dependents(st, key):
+    rev = defaultdict(set)
+    for it in st.items.values():
+        for f in it.froms:
+            rev[f].add(it.key)
+    seen, queue = set(), deque([key])
+    while queue:
+        for d in sorted(rev[queue.popleft()]):
+            if d not in seen:
+                seen.add(d)
+                queue.append(d)
+    return sorted(seen)
+
+
+def analyse(st):
+    """Return (errors, open) where open maps a heading to a list of lines."""
+    errors = list(st.errors)
+    opened = defaultdict(list)
+    items = st.items
+
+    for it in items.values():
+        for f in it.froms:
+            if f not in items:
+                errors.append((it.home, '%s: From points at nothing: %s' % (it.key, f)))
+        if it.kind in ('claim',) + FORMAL and not it.froms:
+            errors.append((it.home, '%s has no From' % it.key))
+        if it.kind in FORMAL and it.in_model:
+            problem = check_disposition(it)
+            if problem:
+                errors.append((it.home, '%s: %s' % (it.key, problem)))
+        if it.kind == 'ta' and not it.in_model and clean(it.mitigation or '').lower() in EMPTY_CELLS:
+            errors.append((it.home, '%s has no mitigation' % it.key))
+        if it.kind == 'claim' and not re.match(
+                r'(accepted\s*$|rejected,\s*because\s+\S|deferred,\s*because\s+\S)',
+                (it.status or '').strip().lower()):
+            errors.append((it.home, '%s: status must be Accepted, "Rejected, because ...", '
+                                    'or "Deferred, because ..."' % it.key))
+    for key, (home, reason, why) in st.dismissed.items():
+        if key not in items:
+            errors.append((home, 'dismissal points at nothing: %s' % key))
+        if reason.strip(' .') and not why:
+            errors.append((home, 'dismissal of %s: the reason must name what made it '
+                                 'unnecessary, by address or ID' % key))
+        for w in why:
+            if w not in items:
+                errors.append((home, 'dismissal of %s: reason points at nothing: %s' % (key, w)))
+            elif items[w].kind == 'claim' and \
+                    (items[w].status or '').strip().lower().startswith('accepted'):
+                errors.append((home, 'dismissal of %s cites an accepted claim: %s' % (key, w)))
+
+    for label in sorted(st.parked, key=lambda p: int(p[1:])):
+        home, take_up, status, text = st.parked[label]
+        low = status.strip().lower()
+        if low == 'parked':
+            opened['Parked items'].append('%s  take up: %s  %s  (%s)'
+                                          % (label, take_up or '?', text, home))
+        elif not re.match(r'closed:\s*\S', low):
+            errors.append((home, '%s: status must be Parked or "Closed: <outcome>"' % label))
+
+    # Sweeps: every pass entry is a source of exactly one merged entry.
+    merged_into = defaultdict(list)
+    for it in items.values():
+        if it.kind == 'merged':
+            for f in it.froms:
+                merged_into[f].append(it.key)
+    for it in sorted(items.values(), key=lambda x: x.key):
+        if it.kind != 'entry':
+            continue
+        targets = merged_into[it.key]
+        if len(targets) > 1:
+            errors.append((it.home, '%s is merged more than once: %s'
+                           % (it.key, ', '.join(sorted(targets)))))
+        elif not targets:
+            opened['Sweep entries not yet merged'].append('%s  (%s)' % (it.key, it.home))
+
+    named = set()          # named by a claim or formal item
+    by_formal = set()      # named by a formal item
+    for it in items.values():
+        if it.kind in ('claim',) + FORMAL:
+            named.update(it.froms)
+        if it.kind in FORMAL:
+            by_formal.update(it.froms)
+
+    for it in sorted(items.values(), key=lambda x: x.key):
+        if it.kind == 'merged' and it.key not in named and it.key not in st.dismissed:
+            opened['Merged entries not yet disposed of'].append('%s  (%s)' % (it.key, it.home))
+        if it.kind in ('note', 'decision'):
+            where = os.path.dirname(it.key.split('#')[0])
+            if it.kind == 'note' and clean(it.note_kind).lower() == 'open':
+                opened['Notes of kind Open'].append('%s  (%s)' % (it.key, it.home))
+            if where not in st.model_dirs and where not in st.claims_dirs:
+                continue
+            if it.kind == 'decision' and clean(it.impact).lower() in EMPTY_CELLS:
+                continue
+            by_claim = where in st.claims_dirs and it.key in named
+            if it.key not in by_formal and it.key not in st.dismissed and not by_claim:
+                what = 'Notes' if it.kind == 'note' else 'Impact cells'
+                opened[what + ' not accounted for'].append('%s  (%s)' % (it.key, it.home))
+        if it.kind == 'claim' and (it.status or '').strip().lower().startswith('accepted') \
+                and it.key not in by_formal:
+            opened['Accepted claims nothing serves'].append('%s  (%s)' % (it.key, it.home))
+        if it.kind in ('inv', 'prop') and (it.disposition or '').lower().startswith('verify') \
+                and harness_name(it.key) not in st.harnesses:
+            opened['Verify items with no harness'].append(
+                '%s  expects fn %s  (%s)' % (it.key, harness_name(it.key), it.home))
+        if it.reopened:
+            deps = dependents(st, it.key)
+            opened['Reopened'].append('%s  (%s)  rests on it: %s'
+                                      % (it.key, it.home, ', '.join(deps) or 'nothing'))
+    for home in st.believed:
+        opened['Believed facts'].append(home)
+    return errors, opened
+
+
+def cmd_check(st):
+    errors, opened = analyse(st)
+    if errors:
+        print('Errors (%d)' % len(errors))
+        for home, msg in sorted(errors):
+            print('  %s  %s' % (home, msg))
+    total = sum(len(v) for v in opened.values())
+    if total:
+        print('Open (%d)' % total)
+        for heading in sorted(opened):
+            print('  %s (%d)' % (heading, len(opened[heading])))
+            for line in opened[heading]:
+                print('    ' + line)
+    if not errors and not total:
+        print('OK: no errors, nothing open.')
+    return 1 if errors else 0
+
+
+def cmd_registry(st):
+    print('| ID | Kind | Statement | From | Status / Disposition | Home | Evidence |')
+    print('|----|------|-----------|------|----------------------|------|----------|')
+    order = {'claim': 0, 'ta': 1, 'inv': 2, 'prop': 3}
+    rows = [it for it in st.items.values() if it.kind in order]
+    for it in sorted(rows, key=lambda x: (order[x.kind], x.key)):
+        if it.kind == 'claim':
+            state, evidence = it.status or '', ''
+        elif it.kind == 'ta':
+            state = it.disposition or ('Trust, mitigated by ' + (it.mitigation or ''))
+            evidence = 'cited in %d source file(s)' % st.ta_citations.get(it.key, 0)
+        else:
+            state = it.disposition or ''
+            name = harness_name(it.key)
+            if not state.lower().startswith('verify'):
+                evidence = ''
+            else:
+                evidence = name if name in st.harnesses else 'no harness'
+        print('| %s | %s | %s | %s | %s | %s | %s |' % (
+            it.key, it.kind, it.text, ', '.join(it.froms), state, it.home, evidence))
+    return 0
+
+
+def cmd_dismissed(st):
+    if not st.dismissed:
+        print('No dismissals.')
+    for key in sorted(st.dismissed):
+        home, reason, _ = st.dismissed[key]
+        item = st.items.get(key)
+        print('%s  %s' % (key, item.text if item else '(points at nothing)'))
+        print('    because %s  (%s)' % (reason, home))
+    return 0
+
+
+def cmd_rests_on(st, key):
+    if key not in st.items:
+        print('unknown item: %s' % key)
+        return 2
+    deps = dependents(st, key)
+    if not deps:
+        print('Nothing rests on %s.' % key)
+    for d in deps:
+        print('%s  (%s)' % (d, st.items[d].home))
+    return 0
+
+
+def main(argv):
+    root = '.'
+    if len(argv) >= 2 and argv[0] == '--root':
+        root, argv = argv[1], argv[2:]
+    if not os.path.isdir(os.path.join(root, 'docs')):
+        print('no docs/ directory under %s' % os.path.abspath(root))
+        return 2
+    st = load(root)
+    if not argv:
+        return cmd_check(st)
+    if argv == ['registry']:
+        return cmd_registry(st)
+    if argv == ['dismissed']:
+        return cmd_dismissed(st)
+    if len(argv) == 2 and argv[0] == 'rests-on':
+        return cmd_rests_on(st, argv[1])
+    print(__doc__)
+    return 2
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))

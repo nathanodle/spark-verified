@@ -1,0 +1,12 @@
+# {{PROJECT_NAME}} Parked
+
+Topics set down to come back to. See "Parking" in `docs/spec-strategy.md`.
+
+- **Item** is the words as they were said, then what we were working on at the time.
+- **Take up** is when it must come back: `stage one` (before leaving it), `claims sweep`,
+  `formalizing <feature>`, or `any time`. If unsure, `stage one`.
+- **Status** is `Parked`, or `Closed: <what it became, or why it was dropped>`.
+
+| # | By | Item | Take up | Status |
+|---|----|------|---------|--------|
+| P1 | {{User / Claude}} | {{"the words" - while doing what}} | {{take up}} | Parked |

@@ -8,71 +8,44 @@
 
 ## Platform Specs
 
-Shared infrastructure that applies across all subsystems.
-
 ### Planning
 | Document | Status | Description |
 |----------|--------|-------------|
-| [Spec Strategy](../spec-strategy.md) | Complete | Methodology: formal layer, IDs, gates, templates |
-| [Build Order](build-order.md) | 🔲 Pending | Implementation order with property gates |
+| [Spec Strategy](../spec-strategy.md) | Complete | Methodology, stage one |
+| [Verification Strategy](../verification-strategy.md) | Complete | Methodology, later stages |
+| [Build Order](build-order.md) | 🔲 Pending | Implementation order |
+| [Parked](parked.md) | Living | Topics set down to come back to |
 
 ### Shared Specs
 | Document | Status | Description |
 |----------|--------|-------------|
-| [Hardware](hardware.md) | 🔲 Pending | Board, SoC, cores, memory map, peripherals, boot, bench |
-| [Stack](stack.md) | 🔲 Pending | Toolchain, target, prover, build matrix |
-| [Verification](verification.md) | 🔲 Pending | Prover, assurance levels, TCB, ID scheme, design rules |
-| [Properties](properties.md) | 🔲 Pending | Property registry and tag registry |
+| [Stack](stack.md) | 🔲 Pending | Tech choices, toolchain |
+| [Hardware](hardware.md) | 🔲 Pending | What it runs on |
 
-### Model
-Platform-level model types shared by subsystems live in [`model.rs`](model.rs) and are
-included by the `model/` crate as `model::platform`.
+### Verification
+{{Delete this group if the project will not be verified.}}
 
-### Templates
-Spec templates for bootstrapping new subsystems live in [`templates/`](templates/).
-
-### Archive
-Historical implementation plans and completed build orders live in [`archive/`](archive/).
+| Document | Status | Description |
+|----------|--------|-------------|
+| [System Description](system-description.md) | 🔲 Pending | Input to sweeps |
+| [Claims](claims.md) | 🔲 Pending | What the system claims, and what it does not |
 
 ---
 
 ## Subsystems
 
-Each subsystem has its own spec directory under `docs/<subsystem>/spec/`.
-
-| Subsystem | Tag | Spec | Verification | Owner Core | Description |
-|-----------|-----|------|--------------|------------|-------------|
-| [{{Subsystem A}}](../{{subsystem-a}}/spec/index.md) | {{TAG}} | 🔲 Pending | 0/0 | {{core}} | {{Description}} |
-| [{{Subsystem B}}](../{{subsystem-b}}/spec/index.md) | {{TAG}} | 🔲 Pending | 0/0 | {{core}} | {{Description}} |
+| Subsystem | Status | Stage | Description |
+|-----------|--------|-------|-------------|
+| [{{Subsystem}}](../{{subsystem}}/spec/index.md) | 🔲 Pending | {{1 Spec / 3 Formalize / 4 Implement}} | {{Description}} |
 
 ---
 
 ## Project Scope
 
-### Phase 1: {{Name}}
-- {{Key deliverable}}
-- {{Key deliverable}}
-
-### Phase 2: {{Name}}
-- {{Key deliverable}}
-
-### Future
-- {{Ideas for later}}
-
----
-
-## Target Users
-
-{{Who will use this? Internal users, customers, developers, etc.}}
-
----
-
-## Key Insights
-
-{{Optional: If you've done research/analysis that informs the design, summarize findings here.}}
+{{What is in. What is explicitly out.}}
 
 ---
 
 ## External References
 
-{{Links to reference manuals, datasheets, prior art, related projects, etc.}}
+{{Reference manuals, standards, related projects.}}

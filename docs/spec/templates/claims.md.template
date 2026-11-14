@@ -1,0 +1,35 @@
+# {{PROJECT_NAME}} Claims
+
+What the system says it does or never does, what it explicitly does not claim, and what
+it trusts. The anchor for everything formal. See "Claims" in verification-strategy.md.
+
+**Status:** 🔲 Pending
+
+---
+
+## Claims
+
+Status is `Accepted`, `Rejected, because ...`, or `Deferred, because ...`.
+
+| ID | Status | Claim | From |
+|----|--------|-------|------|
+| C-001 | {{status}} | {{claim}} | {{notes and merged sweep entries it came from}} |
+
+---
+
+## Trust Assumptions
+
+Those not about a model. A trust assumption about a model lives in that model's file.
+
+| ID | Assumption | Mitigation | From |
+|----|------------|------------|------|
+| TA-PLAT-001 | {{assumption}} | {{mitigation}} | {{decision or note it came from}} |
+
+---
+
+## Dismissed
+
+Platform notes and impact cells that became nothing above. Each reason names what made
+the note unnecessary.
+
+- Dismissed: {{spec/hardware#V0}}, because {{address or ID}}.

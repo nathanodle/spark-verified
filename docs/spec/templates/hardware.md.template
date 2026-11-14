@@ -1,122 +1,67 @@
 # {{PROJECT_NAME}} Hardware
 
-The board and SoC this project runs on, what we touch, and how we get code onto it.
+What this project runs on, what it touches, and how code gets onto it.
 
 **Status:** 🔲 Pending
 
----
-
-## Related Specs
-
-- [Stack](stack.md) - Toolchain and target that match this hardware
-- [Verification](verification.md) - Hardware is the largest trust assumption; see TCB
+Mark each fact that matters: `[source: document, revision, section]` or `[believed]`.
 
 ---
 
-## Board
+## Board and Processor
 
 | Item | Value |
 |------|-------|
-| Board | {{board name and revision}} |
-| SoC | {{SoC part number and revision}} |
-| Reference manual | {{link or document number}} |
-| Board manual / schematics | {{link or document number}} |
-| Errata | {{link or document number}} |
-
----
-
-## Cores
-
-| Item | Value |
-|------|-------|
-| Core count | {{n}} |
-| Core type / ISA | {{e.g. e5500, Power ISA 2.06 Book E, 64-bit}} |
-| Endianness | {{big / little}} |
-| Clock | {{MHz}} |
-| L1 / L2 | {{sizes}} |
-| SMT | {{yes / no}} |
-| MMU | {{TLB-based software managed, page table, etc.}} |
-
-### Core Assignment
-
-| Core | Role | Takes Interrupts | Notes |
-|------|------|------------------|-------|
-| 0 | {{control}} | {{yes/no}} | {{what it does}} |
-| 1 | {{dataplane}} | {{yes/no}} | {{what it does}} |
-| 2 | {{reserved}} | off | |
-| 3 | {{reserved}} | off | |
-
-See [Verification](verification.md) for the ownership discipline this assignment supports.
+| Board | {{name, revision}} |
+| Processor | {{part, revision}} |
+| Cores | {{count, type, endianness}} |
+| Reference documents | {{manuals, schematics, errata}} |
 
 ---
 
 ## Memory Map
 
-Only regions this project touches. Full map is in the reference manual.
+Only regions this project touches.
 
-| Region | Base | Size | Use | Cacheable |
-|--------|------|------|-----|-----------|
-| DRAM | {{0x...}} | {{GB}} | Kernel image, data, packet buffers | yes |
-| {{Flash}} | {{0x...}} | {{MB}} | {{boot image, config}} | {{no}} |
-| {{CCSR / MMIO}} | {{0x...}} | {{MB}} | Device registers | no |
-| {{...}} | | | | |
+| Region | Base | Size | Use |
+|--------|------|------|-----|
+| {{RAM}} | {{0x...}} | {{size}} | {{use}} |
 
 ---
 
 ## Peripherals
 
-### In Scope
-
-| Peripheral | Used For | Subsystem | Reference Manual Chapter |
-|------------|----------|-----------|--------------------------|
-| {{DUART}} | Console | {{uart}} | {{ch}} |
-| {{...}} | | | |
-
-### Explicitly Out of Scope
-
-| Peripheral | Why Not |
-|------------|---------|
-| {{USB}} | {{not needed for a router}} |
-| {{...}} | |
+| Peripheral | In Scope | Used For / Why Not |
+|------------|----------|--------------------|
+| {{name}} | {{yes / no}} | {{reason}} |
 
 ---
 
 ## Boot Path
 
-What runs before our code, and how our image gets loaded.
-
-```
-{{Power on → ROM/PBL → RCW → U-Boot (stock) → loads our image from X → jumps to entry}}
-```
-
-| Stage | Who Provides It | Trusted? |
-|-------|-----------------|----------|
-| {{PBL / RCW}} | {{vendor}} | yes, TA-PLAT-{{nnn}} |
-| {{U-Boot}} | {{stock vendor build}} | yes, TA-PLAT-{{nnn}} |
-| Our entry | this project | verified per subsystem |
-
-Entry conditions we assume (MMU state, which core is running, register contents,
-where the image sits): {{list, or link to boot subsystem spec}}
+{{What runs before our code, and how our image is loaded. What we assume on entry.}}
 
 ---
 
 ## Bench
 
-| Item | Value |
-|------|-------|
-| Console | {{serial port, baud, adapter}} |
-| Debugger | {{JTAG probe, or none}} |
-| Image loading | {{TFTP, SD card, flash write}} |
-| Recovery | {{how to get back to a working boot if we brick it}} |
-| Emulator | {{QEMU model if one exists, and how faithful it is}} |
+{{Console, debugger, how to load an image, how to recover.}}
+
+---
+
+## Verification Notes
+
+| # | Kind | Note |
+|---|------|------|
+| V1 | {{kind}} | {{note}} |
 
 ---
 
 ## Decisions
 
-| Decision | Alternatives Considered | Why This Choice | Verification Impact |
-|----------|------------------------|-----------------|---------------------|
-| {{decision}} | {{what else was on the table}} | {{reasoning}} | {{what it makes provable or trusted}} |
+| # | Decision | Alternatives Considered | Why This Choice | Verification Impact |
+|---|----------|------------------------|-----------------|---------------------|
+| D1 | {{decision}} | {{what else was on the table}} | {{reasoning}} | {{impact, or see V-number}} |
 
 ---
 
