@@ -188,10 +188,24 @@ list.
 | Reliances | At one thing depended on but not controlled | Each outside dependency | What if it is false, late, or different from expected? |
 | Exclusions | At one thing the system says it does not do | Each exclusion | The world does it anyway. Where does it arrive, and what happens? |
 | Permissions | As one party, using only what it is allowed | Each party and each allowed action | What harm can be assembled from allowed actions alone? |
+| Pairs | At one item of a list | Every other item of the same list. Run over the State list, and over the parties in Permissions. | Are these two related in a way the description does not state? Must they agree, stay apart, or happen in a set order? |
 
 Some overlap is kept on purpose. Boundaries, Exclusions, and Permissions meet at the
 edge of the system; State and Agreements meet at stored data. Watch the overlap at the
 merge.
+
+Pairs is the completeness check for Separations and Agreements, which walk only the
+pairs the description declares. It walks a list against itself, so it runs only on
+short lists. Like the category lenses, it can be staffed two ways:
+
+| Way | Each agent gets | Agents, for n items |
+|-----|-----------------|---------------------|
+| By row (default) | One item. It walks every other item. | n |
+| By cell | One pair | n(n-1)/2 |
+
+By row, every pair is seen from both ends. A relationship reported from one end only
+is either a real find or a miss by the other agent. Before the sweep, give the human
+the agent count for each way and ask which they want.
 
 *Category lenses.* For the claims sweep only, and built at sweep time. A standard
 claims lens asks an open question at a part of the system: what could go wrong here? A
@@ -248,10 +262,12 @@ its walk from the input, and asks at each step which members arise there.
 | Outside | Each point where the subject meets its surroundings | Which members come from the other side? |
 | Failure | Each thing that can fail, be absent, or come late | Which members arise only when it does? |
 | Edges | Each clause of the membership test, relaxed one at a time | What meets every clause but this one, and should it count? |
+| Pairs | From one part of the subject, every other part | Which members arise only between these two? |
 
 Said and Unsaid are an opposite pair, and so are Forward and Backward. Opposite lenses
 reach the same set from two ends and cross-check each other: a member found from one
-end only is either a real find or a gap in the other walk.
+end only is either a real find or a gap in the other walk. Pairs is staffed by row or
+by cell, as in the claims set.
 
 **Rules for every pass**
 
@@ -471,24 +487,27 @@ pub fn pre_flow_insert<const N: usize>(s: &State<N>, a: &InsertArgs) -> bool { .
 ### Accounting for Notes
 
 Once stage one is left, every standing verification note and every filled-in
-Verification Impact cell must be accounted for.
+Verification Impact cell must be accounted for. Any one of these settles it:
 
-- In a subsystem, a formal item names it in its `From`.
-- In the platform specs, a claim or trust assumption in `claims.md` names it. This
+- **A formal item or contract names it** in its `From`.
+- **Every claim that names it was rejected or deferred.** The ruling on the claim is
+  the ruling on the note, and needs no second line. If such a claim is accepted later,
+  the note is unsettled again.
+- **In the platform specs, a claim or trust assumption in `claims.md` names it,**
+  whatever the claim's status. An accepted claim carries the note forward. This
   happens when `claims.md` is written.
 
 Anything else is dismissed, in the formal home of its directory: the model file, or
 `claims.md` for the platform specs.
 
 ```rust
-//! Dismissed: net/spec/flow#V5, because C-002 was rejected.
+//! Dismissed: net/spec/flow#V5, because it duplicates net/spec/flow#V2.
 ```
 
-The reason must name what made the note unnecessary: a rejected or deferred claim, a
-decision that replaced it, the note it duplicates. It may not cite an accepted claim,
-so accepting a claim later brings its dismissed notes back. Dismissals are the one
-place an early thought can be dropped, so `tools/check dismissed` lists them all and
-the human reviews them at the gate.
+The reason must name what made the note unnecessary: the note it duplicates, or a
+decision that replaced it. It may not cite an accepted claim. A dismissal is the one
+place an early thought can be dropped on the formalizer's own judgment, so
+`tools/check dismissed` lists them all and the human reviews them at the gate.
 
 ---
 

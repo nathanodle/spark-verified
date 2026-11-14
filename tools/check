@@ -394,9 +394,16 @@ def analyse(st):
         elif not targets:
             opened['Sweep entries not yet merged'].append('%s  (%s)' % (it.key, it.home))
 
+    def accepted(claim):
+        return (claim.status or '').strip().lower().startswith('accepted')
+
     named = set()          # named by a claim or formal item
     by_formal = set()      # named by a formal item
+    naming_claims = defaultdict(list)
     for it in items.values():
+        if it.kind == 'claim':
+            for f in it.froms:
+                naming_claims[f].append(it)
         if it.kind in TRACED:
             named.update(it.froms)
         if it.kind in FORMAL + ('contract',):
@@ -414,11 +421,13 @@ def analyse(st):
             if it.kind == 'decision' and clean(it.impact).lower() in EMPTY_CELLS:
                 continue
             by_claim = where in st.claims_dirs and it.key in named
-            if it.key not in by_formal and it.key not in st.dismissed and not by_claim:
+            ruled_out = bool(naming_claims[it.key]) and \
+                not any(accepted(c) for c in naming_claims[it.key])
+            if it.key not in by_formal and it.key not in st.dismissed \
+                    and not by_claim and not ruled_out:
                 what = 'Notes' if it.kind == 'note' else 'Impact cells'
                 opened[what + ' not accounted for'].append('%s  (%s)' % (it.key, it.home))
-        if it.kind == 'claim' and (it.status or '').strip().lower().startswith('accepted') \
-                and it.key not in by_formal:
+        if it.kind == 'claim' and accepted(it) and it.key not in by_formal:
             opened['Accepted claims nothing serves'].append('%s  (%s)' % (it.key, it.home))
         if it.kind in ('inv', 'prop') and (it.disposition or '').lower().startswith('verify') \
                 and harness_name(it.key) not in st.harnesses:
