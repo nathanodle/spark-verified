@@ -1,0 +1,242 @@
+# {{PROJECT_NAME}} - Project Guide for Claude
+
+## What is {{PROJECT_NAME}}?
+
+{{One paragraph description of the project. What problem does it solve? What hardware
+does it run on? What does "verified" mean for it?}}
+
+---
+
+## Spec Organization
+
+Specs are organized into **platform specs** (shared) and **subsystem specs** (one per
+module or driver). Every subsystem spec carries a **formal layer**: an abstract model in
+Rust, invariants, contracts, properties, and trust assumptions. See
+`docs/spec-strategy.md` for the methodology.
+
+```
+docs/
+├── spec-strategy.md              # Methodology for all specs
+├── spec/                         # Platform-level shared specs
+│   ├── index.md                  # Start here - overview + links to subsystems
+│   ├── hardware.md               # Board, SoC, cores, memory map, boot, bench
+│   ├── stack.md                  # Toolchain, target, prover, build matrix
+│   ├── verification.md           # Prover, assurance levels, TCB, ID scheme, design rules
+│   ├── properties.md             # Property registry - every INV/PROP/TA, traceability
+│   ├── build-order.md            # Platform build order with property gates
+│   ├── model.rs                  # Shared model types (model::platform)
+│   ├── templates/                # Templates for new subsystems
+│   └── archive/                  # Historical specs
+│
+├── {{subsystem}}/spec/           # Subsystem specs
+│   ├── index.md                  # Overview + Related Platform Specs table
+│   ├── {{subsystem}}.md          # The spec: model, INVs, operations, PROPs, TAs, harness plan
+│   └── model.rs                  # Abstract model (model::{{subsystem}})
+│
+└── {{another-subsystem}}/spec/
+    └── ...
+
+model/                            # The model crate - includes every model.rs by path
+```
+
+**When working on a subsystem:**
+1. Read its spec (`docs/{{subsystem}}/spec/{{subsystem}}.md`) and its `model.rs`
+2. Check the "Related Specs" table at the top
+3. Check its rows in `docs/spec/properties.md`
+4. Consult `verification.md` for design rules and harness conventions
+
+**Spec status:** ✅ Complete / 🔲 Pending / 🔲 Partial / 🔲 Draft
+**Verification status (per ID):** 🔲 Specified / 🔲 Harnessed / ✅ Verified (N) / ✅ Tested / ✅ Trusted
+
+---
+
+## Key Documentation
+
+| File | Purpose |
+|------|---------|
+| `docs/spec/index.md` | Spec overview - start here |
+| `docs/spec/verification.md` | How verification works, what is trusted, design rules |
+| `docs/spec/properties.md` | Every property ID and its status |
+| `docs/spec/hardware.md` | The board |
+| `docs/spec/stack.md` | Toolchain and build matrix |
+| `docs/spec-strategy.md` | Methodology reference |
+| `docs/{{subsystem}}/spec/index.md` | {{Subsystem}} overview |
+
+---
+
+## Tech Stack Summary
+
+| Layer | Choice |
+|-------|--------|
+| Language / toolchain | {{Rust nightly-YYYY-MM-DD}} |
+| Target | {{triple or custom JSON}} |
+| Prover | {{Kani x.y}} |
+| Board | {{board / SoC}} |
+
+See `docs/spec/stack.md` for full details.
+
+---
+
+## Architecture
+
+{{Brief architecture description: layering, core assignment, rings.}}
+
+```
+{{ASCII diagram of high-level architecture}}
+```
+
+### Core Assignment
+
+| Core | Role | Interrupts |
+|------|------|------------|
+| {{0}} | {{control}} | {{yes}} |
+| {{1}} | {{dataplane}} | {{no, polls}} |
+
+### Layering
+
+```
+binary/glue  →  hardware crates  →  pure crates  →  model crate
+```
+
+Dependencies point downward only. Pure crates hold all logic and all Kani harnesses.
+Hardware crates hold all `unsafe`, behind traits. See `docs/spec/verification.md`.
+
+---
+
+## Environment
+
+{{Toolchain install, Kani install, serial console setup, how to flash.}}
+
+---
+
+## Important Constraints
+
+{{List key constraints that affect implementation decisions:}}
+{{- Endianness mismatch between host and target}}
+{{- No heap in the kernel}}
+{{- Boot loader assumptions}}
+{{- Peripherals out of scope}}
+
+---
+
+## Current State
+
+{{What's done, what's in progress, what's planned. Which subsystems are specced,
+implemented, verified.}}
+
+---
+
+## Working with This Project
+
+**Do NOT write implementation code until the relevant spec is complete, its model
+compiles, and the user has approved.** Discussion and spec work come first. This is not
+a suggestion - it is how this project works.
+
+If the user asks you to build something and the spec isn't ready, say so. Help them
+finish the spec. Don't skip ahead.
+
+1. **Before coding:** Check spec status in `docs/spec/index.md` and the subsystem's
+   registry rows in `docs/spec/properties.md`
+2. **For hardware facts:** See `docs/spec/hardware.md`, then the reference manual
+3. **For design rules:** See `docs/spec/verification.md`
+4. **For implementation order:** See the relevant `build-order.md`
+5. **For full methodology:** Read `docs/spec-strategy.md`
+
+### Implementation Gate
+
+**Do not suggest or begin implementation** of a subsystem unless ALL of these are true:
+
+1. **No unresolved TODOs** in its spec
+2. **No open questions** - discussed and answered
+3. **User has approved** - reviewed and agreed, not just you writing it
+4. **Status is ✅ Complete** - explicitly marked
+5. **Dependencies ready** - implemented or well enough defined to use
+6. **Model compiles** - `model.rs` exists and `cargo check -p model` passes
+7. **Invariants enumerated** - every INV has a predicate in `model.rs`
+8. **Contracts written** - every operation has requires and ensures against the model
+9. **Dispositions assigned** - every INV, PROP, TA has one, with bound for Verify items
+10. **Core ownership declared** - owning core, rings, interrupt stance
+11. **Big picture understood** - fits the architecture, no conflicts with other specs
+
+If any of these are not met, **stop and address them first**.
+
+### Verification Gate
+
+A subsystem is not done when it compiles and runs. It is done when:
+
+1. Every Verify item has a passing harness at its planned bound, and
+   `docs/spec/properties.md` says ✅ Verified (N)
+2. Every Test item has passing tests and the registry says ✅ Tested
+3. Every TA is cited by at least one `// SAFETY:` comment or trust boundary in code
+4. The harness plan in the spec matches the harnesses that exist
+
+### Downgrades
+
+Changing a disposition from Verify to Test or Trust, or lowering a bound, is allowed
+but is a **recorded decision**: add a row to the subsystem's Decisions table and to the
+Downgrades table in `docs/spec/properties.md`. Never do it silently.
+
+### Dependency Awareness
+
+Before implementing X:
+- Are its dependencies specced and ready?
+- Are they implemented, or defined well enough to code against?
+- Do you understand how X connects to other pieces, including which rings?
+
+"Well enough defined" = model types exist, operations have contracts. Enough to write
+code that uses it and a harness that checks the use.
+
+### Project Structure
+
+The **layering rule** (binary → hardware → pure → model, downward dependencies only) is
+fixed in `docs/spec/verification.md` and is not negotiable per subsystem.
+
+**Folder layout** within a layer is one of the last things before implementation. Wait
+until the subsystems and their relationships are clear.
+
+### During Implementation
+
+**Refer back to specs frequently.** Don't trust your memory - re-read the relevant
+sections and the `model.rs`.
+
+- Before implementing an operation, re-read its contract
+- Write the harness alongside the operation, not after
+- `model.rs` is the only copy of the model. Never duplicate predicates into the
+  implementation crate; import them from `model::`
+- Every `unsafe` block gets a `// SAFETY:` comment citing a TA ID
+- If you're making a decision not covered by the spec, stop and either find it in the
+  spec or discuss with the user and update the spec
+- After completing an operation, run its harnesses and update the registry
+
+---
+
+## Keep Docs in Sync
+
+**IMPORTANT:** Always update documentation as you work.
+
+- When you implement something, update the spec to reflect reality
+- When a harness passes, update status in the subsystem spec AND `properties.md`
+- When you make architecture decisions, document them in the Decisions table with
+  verification impact
+- When you add or retire an ID, update `properties.md`
+- When you change something that affects other docs, update those too
+- Mark spec sections ✅ Complete when implemented and verified
+
+The user may start new sessions and relies on docs being accurate. Stale docs cause
+confusion and wasted time. A stale registry is worse: it claims assurance that does not
+exist.
+
+---
+
+## Spec Strategy Summary
+
+This project follows `docs/spec-strategy.md`. Key principles:
+
+1. **Discuss before writing** - Specs emerge from conversation
+2. **Living documents** - Update specs as you build
+3. **The spec is the prover's input** - Models, invariants, contracts live in the spec
+4. **Nothing is verified by accident** - Every property has a disposition
+5. **Trust is declared** - Every assumption has a TA ID, cited from code
+6. **One owner per state** - Cross-core traffic is rings only
+7. **Cross-reference** - Subsystem specs link to platform specs
+8. **Build order with gates** - Know what to build first and what must be verified first

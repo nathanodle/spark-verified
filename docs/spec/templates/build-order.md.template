@@ -1,0 +1,57 @@
+# {{PROJECT_NAME}} Build Order
+
+Implementation order for {{Phase/Milestone name}}. Each step names the property IDs
+that must be verified before the next step starts.
+
+---
+
+## Path
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  1. {{First Step}}                                              │
+│     {{What this step produces}}                                 │
+│     Spec: {{which spec section}}                                │
+│     Gates: {{INV-X-001, PROP-X-001 verified; TA-X-001 cited}}   │
+└─────────────────────┬───────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  2. {{Second Step}}                                             │
+│     {{What this step produces}}                                 │
+│     Spec: {{which spec section}}                                │
+│     Gates: {{...}}                                              │
+└─────────────────────┬───────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  3. {{Third Step}}                                              │
+│     {{What this step produces}}                                 │
+│     Spec: {{which spec section}}                                │
+│     Gates: {{...}}                                              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Status
+
+| Step | Spec | Spec Status | Gates | Gate Status | Notes |
+|------|------|-------------|-------|-------------|-------|
+| 1. {{Step}} | {{spec}}.md | 🔲 Pending | {{IDs}} | 0/{{n}} | |
+| 2. {{Step}} | {{spec}}.md | 🔲 Pending | {{IDs}} | 0/{{n}} | |
+| 3. {{Step}} | {{spec}}.md | 🔲 Pending | {{IDs}} | 0/{{n}} | |
+
+---
+
+## Why This Order?
+
+1. **{{Step 1}} first** - {{Why this must come before others. What does it unblock?}}
+
+2. **{{Step 2}} next** - {{What dependency does it have on step 1? What does it enable?}}
+
+3. **{{Step 3}} last** - {{Why this comes after the others.}}
+
+---
+
+## Next Action
+
+{{What's the immediate next thing to do?}}

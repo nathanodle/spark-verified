@@ -1,0 +1,132 @@
+//! {{Subsystem Name}} abstract model.
+//!
+//! This file is part of the spec. It is included by the `model` crate as
+//! `model::{{tag}}` and is the single source of truth for this subsystem's state,
+//! invariants, and contracts. Implementation crates provide `abs()` from their
+//! concrete state to [`State`] and verify every property against it.
+//!
+//! Rules: `no_std`, no `unsafe`, no heap, no dependencies beyond `core` and
+//! `crate::platform`. Capacity is a const generic so harnesses can shrink it.
+
+use crate::platform::*;
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+
+/// {{One sentence: what the state is, mathematically.}}
+///
+/// `N` is the capacity. Harness N = {{4}}, deployed N = {{4096}}.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct State<const N: usize> {
+    /// {{field meaning}}
+    pub entries: [Option<Entry>; N],
+}
+
+/// {{One entry in the state.}}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Entry {
+    // {{fields}}
+}
+
+impl<const N: usize> State<N> {
+    /// The empty state. Must satisfy [`inv`].
+    pub const fn empty() -> Self {
+        Self { entries: [None; N] }
+    }
+
+    /// Number of live entries.
+    pub fn len(&self) -> usize {
+        let mut n = 0;
+        let mut i = 0;
+        while i < N {
+            if self.entries[i].is_some() {
+                n += 1;
+            }
+            i += 1;
+        }
+        n
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Invariants
+// ---------------------------------------------------------------------------
+
+/// INV-{{TAG}}-001: {{one sentence}}.
+pub fn inv_{{name}}<const N: usize>(s: &State<N>) -> bool {
+    let _ = s;
+    todo!("INV-{{TAG}}-001")
+}
+
+/// INV-{{TAG}}-002: {{one sentence}}.
+pub fn inv_{{other}}<const N: usize>(s: &State<N>) -> bool {
+    let _ = s;
+    todo!("INV-{{TAG}}-002")
+}
+
+/// Conjunction of every INV-{{TAG}}-nnn. Every operation preserves this.
+pub fn inv<const N: usize>(s: &State<N>) -> bool {
+    inv_{{name}}(s) && inv_{{other}}(s)
+}
+
+// ---------------------------------------------------------------------------
+// Operations: contracts for `{{tag}}::*`
+//
+// Relational form: `pre_<op>` and `post_<op>`.
+// Functional form: `model_<op>` returning the new state and result.
+// Use whichever reads better per operation; both are acceptable.
+// ---------------------------------------------------------------------------
+
+/// Arguments to `{{tag}}::{{operation}}`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct {{Operation}}Args {
+    // {{fields}}
+}
+
+/// Result of `{{tag}}::{{operation}}` as seen by the model.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum {{Operation}}Result {
+    Ok({{T}}),
+    Err({{E}}),
+}
+
+/// Requires for `{{tag}}::{{operation}}`.
+pub fn pre_{{operation}}<const N: usize>(s: &State<N>, a: &{{Operation}}Args) -> bool {
+    let _ = (s, a);
+    todo!("{{tag}}::{{operation}} requires")
+}
+
+/// Ensures for `{{tag}}::{{operation}}`. Relates old state, new state, args, result.
+pub fn post_{{operation}}<const N: usize>(
+    old: &State<N>,
+    new: &State<N>,
+    a: &{{Operation}}Args,
+    r: &{{Operation}}Result,
+) -> bool {
+    let _ = (old, new, a, r);
+    todo!("{{tag}}::{{operation}} ensures")
+}
+
+// Functional alternative, if the operation is deterministic:
+//
+// /// Reference implementation of `{{tag}}::{{operation}}` on the model.
+// pub fn model_{{operation}}<const N: usize>(
+//     s: State<N>,
+//     a: {{Operation}}Args,
+// ) -> (State<N>, {{Operation}}Result) { ... }
+
+// ---------------------------------------------------------------------------
+// Hardware interface model (drivers only; delete otherwise)
+//
+// Types and encoding predicates for registers/descriptors as we read them from
+// the reference manual. This is TA-{{TAG}}-001.
+// ---------------------------------------------------------------------------
+
+// /// {{REG}} at offset {{0x...}}, 32 bits, RW.
+// #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+// pub struct {{Reg}} { pub {{field}}: u8, ... }
+//
+// /// Encoding of {{Reg}} as the hardware expects it. Explicit bit ops only.
+// pub fn encode_{{reg}}(r: &{{Reg}}) -> u32 { ... }
+// pub fn decode_{{reg}}(v: u32) -> {{Reg}} { ... }

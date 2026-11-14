@@ -1,0 +1,179 @@
+# {{PROJECT_NAME}} Verification
+
+How this project is verified: the prover, what its results mean, what is trusted, how
+properties are named, and the design rules that keep the code provable.
+
+**Status:** 🔲 Pending
+
+---
+
+## Related Specs
+
+- [Spec Strategy](../spec-strategy.md) - Methodology, formal layer, gates
+- [Properties](properties.md) - The registry every ID in this project appears in
+- [Stack](stack.md) - Prover version and invocation
+- [Hardware](hardware.md) - The largest trust assumption
+
+---
+
+## Prover and Approach
+
+**Tool:** Kani {{version}}, bounded model checking via CBMC.
+
+**What a result means:** A passing harness proves that for every input and every state
+within the stated bounds, no assertion fails, no panic occurs, and no undefined behavior
+is reachable. It is exhaustive within the bound and silent beyond it.
+
+**What we check:** Inductive invariants (assume `inv(s)`, apply one symbolic operation,
+assert `inv(s')`), contracts (requires/ensures on every operation), absence of panics
+and UB, and encoding correctness against hardware interface models.
+
+**What we do not claim:**
+- Liveness. Nothing "eventually" happens by proof.
+- Weak memory ordering. Kani does not model it. See the concurrency model below.
+- Behavior beyond the stated bound, except by the size-independence argument.
+- Anything about the hardware itself.
+
+{{If a second tool is ever added, say which properties it owns and why.}}
+
+---
+
+## Assurance Levels
+
+| Level | Meaning | Required Artifacts |
+|-------|---------|-------------------|
+| ✅ Verified (N) | Kani harness passes at instance bound N | Harness in repo, registry row with bound, size-independence argument if N < deployed capacity |
+| ✅ Tested | Covered by tests on host and/or hardware | Tests in repo, Decisions row explaining why not Verified |
+| ✅ Trusted | Assumed without proof | TA ID, mitigation, cited from code |
+
+### Size-Independence Argument
+
+When a property is verified at N below the deployed capacity, the registry row links to
+a short argument that the code does not branch on the value of N except through bounds
+checks. Acceptable forms: the structure is a const-generic instantiation and the
+operation is written once for all N; or the operation touches at most k entries
+regardless of N and the bound exceeds k. Anything weaker is a Test, not a Verify.
+
+### Default Bounds
+
+| Structure kind | Harness N | Deployed N |
+|----------------|-----------|------------|
+| {{tables}} | {{4}} | {{4096}} |
+| {{rings}} | {{4}} | {{256}} |
+| {{packet buffers in harness}} | {{128 bytes}} | {{2048}} |
+
+---
+
+## Trusted Computing Base
+
+Everything the verification rests on without proof. Each platform-level item gets a TA
+ID with tag `PLAT`; subsystem-level items live in their own specs with their own tags.
+The full list is in [Properties](properties.md).
+
+| ID | Trusted Item | Mitigation |
+|----|--------------|------------|
+| TA-PLAT-001 | The hardware behaves as described in {{reference manual}} and errata | Vendor documentation, hardware tests |
+| TA-PLAT-002 | {{Boot loader}} hands off with the entry conditions in hardware.md | Checked at entry where cheap |
+| TA-PLAT-003 | The Rust toolchain and linker generate code faithful to the source | Pinned versions |
+| TA-PLAT-004 | Kani and CBMC are sound for the subset of Rust we use | Pinned version, known-limitation list |
+| TA-PLAT-005 | Hand-written assembly (entry, exception stubs, barriers) is correct | Review, kept minimal, listed per file |
+| TA-PLAT-006 | Memory barrier placement in cross-core rings is correct for this ISA's memory model | Review against ISA book, hardware stress test |
+| {{TA-PLAT-nnn}} | {{...}} | {{...}} |
+
+---
+
+## Identifiers
+
+| Kind | Form | Home |
+|------|------|------|
+| Invariant | `INV-<TAG>-nnn` | Subsystem spec and `model.rs` doc comment |
+| Property | `PROP-<TAG>-nnn` | Subsystem spec, or this doc for cross-cutting |
+| Trust assumption | `TA-<TAG>-nnn` | Subsystem spec, or this doc for platform |
+| Operation | Rust path, e.g. `nat::allocate_port` | Subsystem spec and the code |
+
+Tags are registered in [Properties](properties.md). Numbers are never reused. Operation
+names must match the real Rust path; the compiler enforces uniqueness.
+
+---
+
+## Harness Conventions
+
+| Convention | Rule |
+|------------|------|
+| Naming | `check_<id lowercased, hyphens to underscores>`, e.g. `check_inv_nat_003`. One harness per ID minimum. |
+| Location | `{{src/harness.rs or src/kani/}}` in the crate that owns the operation, gated `#[cfg(kani)]` |
+| Symbolic input | `kani::any()` for state and arguments; `kani::assume(inv(&abs(&s)))` to start valid |
+| Bounds | Instance size via const generic instantiation in the harness; unwind via `#[kani::unwind(n)]` matching the spec harness plan |
+| Contracts | `#[kani::requires]` / `#[kani::ensures]` on the operation, referencing `model::` predicates; verified with `#[kani::proof_for_contract]` |
+| Stubs | Hardware traits replaced by model devices; `#[kani::stub]` only where a trait boundary is not possible, and then recorded in the harness plan |
+| Abstraction | Each pure crate exposes `fn abs(&Impl) -> model::State`; harnesses never inspect concrete state directly |
+| CI | {{how harnesses run in CI, which are gated as slow}} |
+
+---
+
+## Design Rules
+
+Every subsystem inherits these. Project-specific additions at the end.
+
+1. **Pure crates are pure.** `#![no_std]`, `#![forbid(unsafe_code)]`, no heap, no
+   hardware dependency. Build and test on host. All logic lives here.
+2. **Hardware is behind traits.** Register access, DMA descriptors, anything with side
+   effects is reached through a trait. Harnesses substitute a model device.
+3. **Encoding is explicit.** Wire formats and register layouts are built with explicit
+   byte and bit operations. No struct overlays on buffers, no `transmute`, no native
+   endianness dependence. {{Target is big-endian; host is little-endian.}}
+4. **Capacity is a parameter.** Fixed-size structures take capacity as a const generic
+   or named const. Harnesses use small N; deployment uses the real N.
+5. **Loops have stated bounds.** Derivable from a capacity const. The harness plan
+   records the unwind limit.
+6. **No panic paths on the hot path.** No `unwrap`, `expect`, or unchecked indexing in
+   pure crates on {{the data path}}.
+7. **State has one owner.** See Concurrency Model.
+8. **`unsafe` cites its TA.** Every `unsafe` block's `// SAFETY:` comment names the TA
+   ID it relies on.
+9. {{Project-specific rule}}
+
+---
+
+## Concurrency Model
+
+{{Describe the ownership discipline for this project. Example:}}
+
+- Every piece of state names exactly one owning core. Only that core reads or writes it.
+- Cross-core communication is through single-producer single-consumer rings only.
+- {{Core 1}} polls and takes no interrupts; its code is sequential.
+- {{Core 0}} takes interrupts for {{UART}}; its interrupt handlers touch only
+  {{a dedicated input ring}} and nothing the main loop touches.
+- The rings are the one shared-memory structure. Their barrier placement is TA-PLAT-006.
+
+### Rings
+
+| Ring | Producer Core | Consumer Core | Carries | Spec |
+|------|---------------|---------------|---------|------|
+| {{cmd}} | {{0}} | {{1}} | {{route and rule updates}} | {{ring spec}} |
+| {{exc}} | {{1}} | {{0}} | {{exception packets, stats}} | {{ring spec}} |
+
+---
+
+## Cross-Cutting Properties
+
+Properties that span subsystems live here with tag `PLAT`.
+
+| ID | Statement | Rests On | Disposition | Status |
+|----|-----------|----------|-------------|--------|
+| PROP-PLAT-001 | {{e.g. No two subsystems claim ownership of the same state}} | {{ownership tables}} | {{Verify/Test/Trust}} | 🔲 Specified |
+
+---
+
+## Decisions
+
+| Decision | Alternatives Considered | Why This Choice | Verification Impact |
+|----------|------------------------|-----------------|---------------------|
+| Kani only | Verus; Kani + Verus | Bounded state by design makes bounded checking sufficient; standard Rust, unsafe allowed | Results are Verified (N), not unbounded theorems |
+| {{decision}} | {{alternatives}} | {{why}} | {{impact}} |
+
+---
+
+## Open Questions
+
+- [ ] {{Question}}

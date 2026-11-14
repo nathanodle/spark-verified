@@ -1,0 +1,109 @@
+# {{PROJECT_NAME}} Tech Stack
+
+## Overview
+
+{{Brief description: language, target, how it is built, how it is verified, how it is
+deployed to the board.}}
+
+---
+
+## Stack Summary
+
+| Layer | Choice | Notes |
+|-------|--------|-------|
+| **Language** | Rust {{edition}} | {{why}} |
+| **Toolchain** | {{nightly-YYYY-MM-DD / stable x.y}} | {{pinned via rust-toolchain.toml}} |
+| **Target** | {{triple or custom target JSON}} | {{why}} |
+| **Prover** | Kani {{version}} | {{why Kani; see verification.md}} |
+| **Build** | cargo {{+ xtask / make / just}} | {{why}} |
+| **Linker** | {{rust-lld / ld}} | {{why}} |
+| **Debugger** | {{gdb + probe, or none}} | |
+| **Emulator** | {{QEMU / none}} | {{fidelity}} |
+| **Tests** | {{cargo test on host, hardware tests via X}} | |
+
+---
+
+## Toolchain
+
+### Rust
+{{Version pinning, required components, why nightly if nightly.}}
+
+### Target
+{{Target triple or custom JSON: ISA, ABI, endianness, float, relocation model, panic
+strategy. Where the JSON lives.}}
+
+### Linker and Layout
+{{Linker, linker script location, entry point, section layout summary.}}
+
+### Binutils
+{{objcopy, objdump, nm, or llvm-tools equivalents, used for what.}}
+
+---
+
+## Prover
+
+### Kani
+{{Version, how installed, how invoked (cargo kani, which packages, which features).
+Which crates run under Kani per the build matrix. Any flags that must always be set.}}
+
+### Harness Location and Naming
+See [Verification](verification.md) harness conventions.
+
+---
+
+## Build Matrix
+
+| Crate / Layer | Host build | Target build | Kani | Tests |
+|---------------|------------|--------------|------|-------|
+| `model` | yes | yes | referenced | yes |
+| {{pure crate}} | yes | yes | yes | yes |
+| {{hardware crate}} | models only | yes | encoding via stubs | on hardware |
+| {{binary}} | no | yes | no | on hardware |
+
+How each row is invoked:
+
+```
+{{cargo check -p model}}
+{{cargo test --workspace --exclude <binary>}}
+{{cargo kani -p <pure crate>}}
+{{cargo build --target <target> -p <binary> --release}}
+```
+
+---
+
+## Development Tools
+
+| Tool | Purpose |
+|------|---------|
+| {{tool}} | {{purpose}} |
+
+---
+
+## Deployment
+
+```
+{{How a built image gets onto the board: objcopy → TFTP → U-Boot load → run, or SD, etc.}}
+```
+
+---
+
+## Data Flow
+
+```
+{{ASCII diagram showing how data moves through the system at runtime}}
+```
+
+---
+
+## Decisions
+
+| Decision | Alternatives Considered | Why This Choice | Verification Impact |
+|----------|------------------------|-----------------|---------------------|
+| {{decision}} | {{what else was on the table}} | {{reasoning}} | {{impact}} |
+
+---
+
+## Future Considerations
+
+{{Known areas that may need expansion later. Don't over-engineer now, but document
+what you're aware of.}}

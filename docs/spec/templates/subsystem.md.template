@@ -1,0 +1,221 @@
+# {{PROJECT_NAME}} {{Subsystem Name}} Specification
+
+{{One-line description of what this subsystem does.}}
+
+**Status:** 🔲 Pending
+**Tag:** `{{TAG}}`
+**Priority:** {{1, 2, 3, or Future}}
+**Model:** [`model.rs`](model.rs) → `model::{{tag}}`
+
+---
+
+## Related Specs
+
+| Spec | Relevance |
+|------|-----------|
+| [Hardware](../../spec/hardware.md) | {{Registers, memory regions, cores this subsystem touches}} |
+| [Verification](../../spec/verification.md) | Assurance level, design rules, TCB, harness conventions |
+| [Properties](../../spec/properties.md) | Registry rows for `{{TAG}}` |
+| [{{Sibling}}](../../{{sibling}}/spec/index.md) | {{Ring consumed, types shared, etc.}} |
+
+---
+
+## Overview
+
+{{2-3 paragraphs describing the subsystem from the system's perspective. What does it
+do? What state does it hold? Who calls it and what do they get back?}}
+
+---
+
+## Requirements
+
+### Must Have
+- {{Core requirement}}
+
+### Should Have
+- {{Important but not critical}}
+
+### Nice to Have
+- {{Can defer}}
+
+---
+
+## Ownership
+
+| Item | Value |
+|------|-------|
+| Owning core | {{n}} |
+| Takes interrupts | {{yes / no}} |
+| Produces to rings | {{ring names, or none}} |
+| Consumes from rings | {{ring names, or none}} |
+| Other shared memory | none {{or justify and name the TA}} |
+
+---
+
+## Abstract Model
+
+{{Prose description of the model state: what it is mathematically, independent of
+implementation. "A partial map from (proto, src, sport, dst, dport) to (ext_port,
+last_seen), with at most N entries."}}
+
+The model is defined in [`model.rs`](model.rs):
+
+| Type / Predicate | Purpose |
+|------------------|---------|
+| `{{State<const N: usize>}}` | {{the state}} |
+| `{{inv(&State) -> bool}}` | Conjunction of all INVs below |
+| `{{pre_op / post_op / model_op}}` | Contracts for each operation below |
+
+Capacity: harness N = {{4}}, deployed N = {{4096}}. Size-independence: {{const generic
+instantiation; operations touch at most k entries}}.
+
+---
+
+## Invariants
+
+| ID | Statement | Predicate | Disposition | Status |
+|----|-----------|-----------|-------------|--------|
+| INV-{{TAG}}-001 | {{one sentence}} | `inv_{{name}}` | Verify | 🔲 Specified |
+| INV-{{TAG}}-002 | {{one sentence}} | `inv_{{name}}` | Verify | 🔲 Specified |
+
+---
+
+## Operations
+
+Each operation is named by its Rust path in the pure crate. Contracts are stated
+against the model and become `#[kani::requires]` / `#[kani::ensures]`.
+
+### `{{tag}}::{{operation}}`
+
+{{What it does, one paragraph.}}
+
+| | |
+|---|---|
+| **Signature** | `fn {{operation}}(&mut self, {{args}}) -> Result<{{T}}, {{E}}>` |
+| **Requires** | `{{pre_operation(&abs(self), &args)}}` - {{prose}} |
+| **Ensures** | `{{post_operation(&old, &abs(self), &args, &result)}}` - {{prose}} |
+| **Preserves** | `inv` |
+| **Errors** | `{{E::Full}}` when {{...}}; `{{E::NotFound}}` when {{...}} |
+| **Touches** | at most {{k}} entries |
+
+### `{{tag}}::{{operation}}`
+
+...
+
+---
+
+## Properties
+
+System-level claims about this subsystem, beyond single-operation contracts.
+
+| ID | Statement | Rests On | Disposition | Status |
+|----|-----------|----------|-------------|--------|
+| PROP-{{TAG}}-001 | {{one sentence}} | {{INV ids, operations}} | Verify | 🔲 Specified |
+
+---
+
+## Hardware Interface Model
+
+*Delete this section if the subsystem is not a driver.*
+
+Our reading of the reference manual, stated as the contract we assume. Modeled in
+`model.rs` as register/descriptor types and encoding predicates so Kani can check our
+encoding logic against it. The model itself is TA-{{TAG}}-001.
+
+### Registers
+
+| Name | Offset | Width | Access | Fields | Notes |
+|------|--------|-------|--------|--------|-------|
+| {{REG}} | {{0x...}} | {{32}} | {{RW / RO / W1C}} | {{bits: name}} | {{ordering, side effects}} |
+
+### Descriptors / Buffers
+
+{{Layout of any in-memory structure the hardware reads or writes. Who owns it when.}}
+
+### Ordering and Side Effects
+
+{{Barriers required between accesses, what a read clears, what a write triggers.}}
+
+### Hardware Trait
+
+```rust
+pub trait {{Device}} {
+    fn {{read_reg}}(&self, off: u32) -> u32;
+    fn {{write_reg}}(&mut self, off: u32, val: u32);
+}
+```
+
+Harnesses substitute a model device implementing this trait.
+
+---
+
+## Trust Assumptions
+
+| ID | Statement | Mitigation | Cited By |
+|----|-----------|------------|----------|
+| TA-{{TAG}}-001 | {{The hardware interface model above matches the silicon}} | {{reference manual ch. X, hardware test Y}} | {{file:line, once it exists}} |
+| TA-{{TAG}}-002 | {{...}} | {{...}} | |
+
+---
+
+## Harness Plan
+
+Per Verify item. Not the harness itself; enough that writing it is mechanical.
+
+| ID | Symbolic | Assumed | Bound | Unwind | Stubs |
+|----|----------|---------|-------|--------|-------|
+| INV-{{TAG}}-001 | state, {{args}} | `inv(state)` | N={{4}} | {{5}} | {{none / model device}} |
+| PROP-{{TAG}}-001 | {{...}} | {{...}} | {{...}} | {{...}} | {{...}} |
+
+---
+
+## Verification Disposition
+
+This subsystem's slice of [Properties](../../spec/properties.md). Must agree with it.
+
+| ID | Disposition | Status | Bound | Harness |
+|----|-------------|--------|-------|---------|
+| INV-{{TAG}}-001 | Verify | 🔲 Specified | N={{4}} | |
+| PROP-{{TAG}}-001 | Verify | 🔲 Specified | N={{4}} | |
+| TA-{{TAG}}-001 | Trust | ✅ Trusted | - | - |
+
+---
+
+## Error Handling
+
+| Error Case | Effect on State | Effect on Caller | Covered By |
+|------------|-----------------|------------------|------------|
+| {{case}} | {{unchanged / partial}} | {{error value}} | {{contract or INV}} |
+
+---
+
+## Integration Points
+
+{{How this subsystem interacts with others: rings, shared model types, call order.}}
+
+---
+
+## Testing Strategy
+
+Beyond harnesses. What runs on host, what must run on hardware.
+
+### Host Tests
+- {{What to test}}
+
+### Hardware Tests
+- {{What can only be checked on the board, and which TA it mitigates}}
+
+---
+
+## Decisions
+
+| Decision | Alternatives Considered | Why This Choice | Verification Impact |
+|----------|------------------------|-----------------|---------------------|
+| {{decision}} | {{what else was on the table}} | {{reasoning}} | {{what it makes provable, trusted, or bounded}} |
+
+---
+
+## Open Questions
+
+- [ ] {{Question 1}}
+- [ ] {{Question 2}}
